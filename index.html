@@ -1,0 +1,11 @@
+<div te-init='s.hello = "hi"; s.counter = 1'>
+  <a href='' te-click='alert(s.hello)'>Click me</a>
+  <button te-click='s.counter += 1'>Add one</button>
+  <span te-bind='return s.counter'></span>
+  <div te-controller=alerty>
+    <button te-click='s.sayHi()'>Use controller function</button>
+    <span te-bind='return s.counter'></span>
+  </div>
+</div>
+<script src="underscore.js"></script>
+<script src="cute.js"></script>
