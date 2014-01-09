@@ -19,7 +19,9 @@ Compiler.prototype = {
   Scope: Scope,
   _: _,
   run: function(el) {
-    this._.each(this.components.library,function(component,sel) {
+    // do sth more advanced to order, and separate compile/link
+    var flatmap = _.compose(_.flatten,_.map)
+    flatmap(this.components.library,function(component,sel) {
       this._.each(el.querySelectorAll(sel),function(componentEl) {
         var scope = Scope.find(componentEl) || this.root
         component(componentEl,scope,this)
@@ -72,8 +74,19 @@ Scope.prototype = {
     }
     return scope
   },
-  apply: function(fn) {
-    fn()
+  apply: (function() {
+    var queued = false;
+    return function(fn) {
+      fn()
+      if(queued) return
+      queued = true
+      setTimeout(function() {
+        queued = false
+        this._apply()
+      }.bind(this))
+    }
+  }),
+  _apply: function() {
     this.findRoot().digest()
   },
   eval: function(src) {
@@ -118,6 +131,29 @@ Cute.registerComponents = function(components,controllers) {
       el.innerHTML = val
     })
   })
+  components.register("[te-submit]",function(el,scope) {
+    var expression = el.getAttribute("te-click")
+    el.addEventListener("submit",function(event) {
+      event.preventDefault()
+      scope.apply(function() {
+        scope.eval(expression)
+      })
+    })
+  })
+  components.register("[te-repeat]",{
+    createLink: function(el) {
+      el.parent.removeChild(el)
+      return function(el,scope) {
+        var expression = el.getAttribute("te-click")
+        el.addEventListener("submit",function(event) {
+          event.preventDefault()
+          scope.apply(function() {
+            scope.eval(expression)
+          })
+        })
+      })
+    }
+  })
 }
 
 
@@ -125,6 +161,14 @@ Cute.registerComponents = function(components,controllers) {
 function main() {
   var components = new Components()
   var controllers = {
+    items: function(el,scope) {
+      scope.items = []
+      scope.addItem = function(item) {
+        scope.items.push(item)
+        scope.item = {title: ""}
+      }
+      scope.item = {title: ""}
+    },
     alerty: function(el,scope) {
       scope.sayHi = function() {
         alert("hi from a controller")

@@ -6,6 +6,21 @@
     <button te-click='s.sayHi()'>Use controller function</button>
     <span te-bind='return s.counter'></span>
   </div>
+  <div te-controller='items'>
+    <form te-submit='addItem(s.item)'>
+      <input te-bind='s.item.title'>
+      <button>
+        Add item titled
+        <span te-bind='s.item.title'></span>
+      <button>
+    </form>
+    <ul te-repeat='items'>
+      <li>
+        <span te-bind='item.title'>
+      </li>
+    </ul>
+  </div>
 </div>
+
 <script src="underscore.js"></script>
 <script src="cute.js"></script>
