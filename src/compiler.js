@@ -16,6 +16,9 @@ function compile(nodes,components,maxPriorty,transcludeFn,attachFn) {
   return compositeLinkFn
   
   function compositeLinkFn(scope) {
+    nodeLinkFns.forEach(function(linkFn,index) {
+      linkFn(scope,nodes[index])
+    })
   } 
 }
 
@@ -39,13 +42,7 @@ function compile(nodes,components,maxPriorty,transcludeFn,attachFn) {
  * */
 function compileNode(node,components,transcludeFn) {
 
-  var hasStop = components.filter(_.partial(has,"stopCompilation"))
-  assertComponents(hasStop.length <= 1,"duplicate stopCompilation components",hasStop)
-  var stopPriority = hasStop[0].priority
-
-  var matched = components.filter(function(component) {
-    return component.priority >= stopPriority && matchComponent(node,component)
-  })
+  var matched = findComponents(node,components)
 
   var links = matched.map(function(component) {
     return applyComponent(node,component,components,transcludeFn) 
@@ -59,6 +56,24 @@ function compileNode(node,components,transcludeFn) {
     })
   } 
 }
+function findComponents(node,components) {
+  var present = components.filter(function(component) {
+    return matchComponent(node,component)
+  })
+
+  var stopPriority = -Number.MAX_VALUE
+  var hasStop = present.filter(_.partial(has,"stopCompilation"))
+  if(hasStop.length > 0) {
+    assertComponents(hasStop.length === 1,"duplicate stopCompilation present",hasStop)
+    stopPriority = hasStop[0].priority
+  }
+
+  present = present.filter(function(component) {
+    return component.priority >= stopPriority
+  })
+
+  return present
+}
 function assertComponents(t,msg,components) {
   if(t) return
   var names = _.pluck(components,"selector")
@@ -68,8 +83,8 @@ function has(k,o) {
   return k in o
 }
 function matchComponent(node,component) {
-  return component.matchElement && component.selector === node.tagName ||
-    node.hasAttribute(component.selector)
+  if(component.matchElement) return component.selector === node.tagName
+  return node.hasAttribute(component.selector)
 }
 function applyComponent(node,component,components,transcludeFn) {
   var linkFn = false
@@ -102,5 +117,8 @@ var byPriority = function(a,b) {
 }
 
 Cute.compile = compile
+Cute._dbg.compiler = {
+  findComponents: findComponents
+}
 
 })()

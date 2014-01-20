@@ -7,7 +7,7 @@ Cute.components = {
   setup: function(sel,fn) {
     var setup = typeof fn === "function" ? {link: fn} : fn
     setup.selector = sel.toUpperCase()
-    setup.priorty = setup.priorty || 0
+    setup.priority = setup.priority || 0
     if(setup.stopCompilation && setup.priority == null) throw new Error("Need priority to stop compilation")
     return setup
   }

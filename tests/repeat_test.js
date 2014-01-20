@@ -1,4 +1,4 @@
-describe("repeat test",function() {
+xdescribe("repeat test",function() {
   var components = []
   before(function() {
     Cute.registerComponents(components,{})

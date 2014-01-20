@@ -8,6 +8,7 @@ module.exports = function(config) {
       'src/cute.js',
       'src/*.js',
       'src/**/*.js',
+      'tests/setup.js',
       'tests/*_test.js'
     ],
     client: {

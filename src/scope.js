@@ -44,9 +44,10 @@ Scope.prototype = {
     return scope
   },
   $apply: (function() {
-    var queued = false;
+    var queued = false
     return function(fn) {
-      fn()
+      if(queued) throw new Error("$digest loop already running")
+      if(fn) fn()
       if(queued) return
       queued = true
       setTimeout(function() {
@@ -54,7 +55,7 @@ Scope.prototype = {
         this._apply()
       }.bind(this))
     }
-  }),
+  })(),
   _apply: function() {
     this._findRoot().$digest()
   },

@@ -61,6 +61,8 @@ Cute.registerComponents = function(components,controllers) {
     }
   })
   add("te-repeat",{
+    stopCompilation: true,
+    priority: 1000,
     compile: function(el,transcludeFn) {
       return function(el,scope) {
         transcludeFn(function(els) {
