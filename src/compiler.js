@@ -8,7 +8,7 @@ function compile(nodes,components,maxPriorty,transcludeFn,attachFn) {
   var components = components.slice().filter(function(c) { return c.priority || 0 < maxPriorty })
 
   var nodeLinkFns = _.map(nodes,function(node) {
-    return compileNode(node,components)
+    return compileNode(node,components,transcludeFn)
   })
 
   if(attachFn) attachFn(nodes)
@@ -64,7 +64,7 @@ function findComponents(node,components) {
   var stopPriority = -Number.MAX_VALUE
   var hasStop = present.filter(_.partial(has,"stopCompilation"))
   if(hasStop.length > 0) {
-    assertComponents(hasStop.length === 1,"duplicate stopCompilation present",hasStop)
+    if(hasStop.length > 1) throw new Error("duplicate stopCompilation present," + formatComponentsForError(hasStop))
     stopPriority = hasStop[0].priority
   }
 
@@ -74,10 +74,8 @@ function findComponents(node,components) {
 
   return present
 }
-function assertComponents(t,msg,components) {
-  if(t) return
-  var names = _.pluck(components,"selector")
-  throw new Error(msg + " caused by components:" + names.join(", "))
+function formatComponentsForError(components) {
+  return " caused by components:" + names.join(", ")
 }
 function has(k,o) {
   return k in o
