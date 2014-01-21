@@ -14,6 +14,23 @@ describe("compiler",function() {
     xit("accepts node",function() {
     })
 
+    it.only("compiles whole tree of nodes",function() {
+
+      var testComponent = {
+        selector: "FOO",
+        transclude: true,
+        link: function(scope,el) {
+          el.classList.add("applied")
+        }
+      }
+
+      var el = toDom('<div><span foo></span></div>')
+      var linkFn = Cute.compile(el,[testComponent])
+      var compiledEl = linkFn({})
+
+      assert(compiledEl[0].querySelector(".applied"),"expected compilation to recurse")
+    })
+
     describe("transclude",function() {
 
       var testComponent = {

@@ -5,17 +5,19 @@ function compile(nodes,components,maxPriorty,transcludeFn) {
   if(typeof nodes === "string") nodes = Cute.htmlToDom(nodes)
   if(nodes instanceof Element) nodes = [nodes]
 
-  if(maxPriorty) {
-    components = components.filter(function(c) {
-      return c.priority || 0 < maxPriorty
-    })
-  }
   components = _.sortBy(components,function(c) {
     return -c.priority
   })
+  var componentsToApply = components.slice()
+
+  if(maxPriorty) {
+    componentsToApply = componentsToApply.filter(function(c) {
+      return c.priority || 0 < maxPriorty
+    })
+  }
 
   var nodeSetups = _.map(nodes,function(node) {
-    return compileNode(node,components,nodes,transcludeFn)
+    return compileNode(node,componentsToApply,components,transcludeFn)
   })
 
   return publicLinkFn
@@ -54,43 +56,55 @@ function tap(x) {
  * - it recurses with maxPriority to create the linker for transcludeFn
  *
  * */
-function compileNode(node,components,transcludeFn) {
+function compileNode(node,componentsForNode,components,transcludeFn) {
 
-  var matched = findComponents(node,components)
+  var childLinkFn
+
+  var matched = findComponents(node,componentsForNode)
+
+  var compilationStopped = false
 
   var links = matched.map(function(component) {
-    var step = applyComponent(node,component,components,transcludeFn)
+    var step = applyComponent(node,component,componentsForNode,components,transcludeFn)
     node = step.node || node
+    if(!compilationStopped) compilationStopped = step.stopCompilation
     return step.link
   })
+
+  if(!compilationStopped && node.children.length > 0) {
+    childLinkFn = compile(node.children,components)
+  }
 
   return {node: node, link: nodeLinkFn}
 
   function nodeLinkFn(scope) {
     links.forEach(function(linkFn) {
-      linkFn(scope)
+      linkFn(scope,node)
     })
+    if(childLinkFn) childLinkFn(scope)
   } 
 }
-function applyComponent(node,component,components,transcludeFn) {
-  var linkFn = false
-  var childrenLinkFn = false
+function noop() {}
+function applyComponent(node,component,componentsForNode,components,transcludeFn) {
+  var linkFn
+  var transcludeFn
+  var stopCompilation
 
   if(component.transclude) {
     var clone = node.cloneNode(true)
     if(node.transclude == "element") {
       var placeholder = document.createComment(component.selector)
       node.parentElement.replaceChild(placeholder,node)
-      childrenLinkFn = compile([clone],components,node.priority)
+      transcludeFn = compile([clone],components,node.priority)
       node = placeholder
     } else {
       node.innerHTML = ""
-      childrenLinkFn = compile(clone.children,components)
+      transcludeFn = compile(clone.children,components)
     }
   }
 
   if(component.compile) {
-    linkFn = component.compile(node,childrenLinkFn || transcludeFn)
+    linkFn = component.compile(node,transcludeFn)
   } else {
     linkFn = component.link
   }
