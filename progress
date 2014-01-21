@@ -1,0 +1,15 @@
+#!/bin/bash
+
+sum() {
+  awk '/SUM/ {print $5}'
+}
+
+mine=$(cloc src | sum)
+
+for lib in "$@"; do
+  target=$(cloc $lib --sum-one | sum)
+  diff=$(( $target - mine ))
+  ratio=$( bc <<< "scale = 3; ($mine / $target) * 100" )
+
+  echo "$lib is $diff lines bigger, you're currently at $ratio%"
+done
