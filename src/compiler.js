@@ -1,25 +1,39 @@
 (function() {
 
-function compile(nodes,components,maxPriorty,transcludeFn,attachFn) {
+function compile(nodes,components,maxPriorty,transcludeFn) {
 
   if(typeof nodes === "string") nodes = Cute.htmlToDom(nodes)
-  if(nodes instanceof Element) nodes = [Element]
+  if(nodes instanceof Element) nodes = [nodes]
 
-  var components = components.slice().filter(function(c) { return c.priority || 0 < maxPriorty })
-
-  var nodeLinkFns = _.map(nodes,function(node) {
-    return compileNode(node,components,transcludeFn)
+  if(maxPriorty) {
+    components = components.filter(function(c) {
+      return c.priority || 0 < maxPriorty
+    })
+  }
+  components = _.sortBy(components,function(c) {
+    return -c.priority
   })
 
-  if(attachFn) attachFn(nodes)
+  var nodeSetups = _.map(nodes,function(node) {
+    return compileNode(node,components,nodes,transcludeFn)
+  })
 
-  return compositeLinkFn
+  return publicLinkFn
   
-  function compositeLinkFn(scope) {
-    nodeLinkFns.forEach(function(linkFn,index) {
-      linkFn(scope,nodes[index])
+  function publicLinkFn(scope,attachFn) {
+    var nodesToLink = nodeSetups.map(function(setup,index) {
+      var node = attachFn ? setup.node.cloneNode(true) : setup.node
+      setup.link(scope,node)
+      return node
     })
+    if(attachFn) attachFn(nodesToLink,scope)
+
+    return nodesToLink
   } 
+}
+
+function tap(x) {
+  console.log(x); return x
 }
 
 /* metadoc:
@@ -45,16 +59,43 @@ function compileNode(node,components,transcludeFn) {
   var matched = findComponents(node,components)
 
   var links = matched.map(function(component) {
-    return applyComponent(node,component,components,transcludeFn) 
+    var step = applyComponent(node,component,components,transcludeFn)
+    node = step.node || node
+    return step.link
   })
 
-  return nodeLinkFn
+  return {node: node, link: nodeLinkFn}
 
   function nodeLinkFn(scope) {
     links.forEach(function(linkFn) {
       linkFn(scope)
     })
   } 
+}
+function applyComponent(node,component,components,transcludeFn) {
+  var linkFn = false
+  var childrenLinkFn = false
+
+  if(component.transclude) {
+    var clone = node.cloneNode(true)
+    if(node.transclude == "element") {
+      var placeholder = document.createComment(component.selector)
+      node.parentElement.replaceChild(placeholder,node)
+      childrenLinkFn = compile([clone],components,node.priority)
+      node = placeholder
+    } else {
+      node.innerHTML = ""
+      childrenLinkFn = compile(clone.children,components)
+    }
+  }
+
+  if(component.compile) {
+    linkFn = component.compile(node,childrenLinkFn || transcludeFn)
+  } else {
+    linkFn = component.link
+  }
+
+  return {node: node, link: linkFn}
 }
 function findComponents(node,components) {
   var present = components.filter(function(component) {
@@ -67,48 +108,28 @@ function findComponents(node,components) {
     if(hasStop.length > 1) throw new Error("duplicate stopCompilation present," + formatComponentsForError(hasStop))
     stopPriority = hasStop[0].priority
   }
-
-  present = present.filter(function(component) {
-    return component.priority >= stopPriority
-  })
+  
+  if(stopPriority > -Number.MAX_VALUE) {
+    present = present.filter(function(component) {
+      return component.priority >= stopPriority
+    })
+  }
 
   return present
 }
+
+
+function matchComponent(node,component) {
+  if(component.matchElement) return component.selector === node.tagName
+  return node.hasAttribute(component.selector)
+}
+
 function formatComponentsForError(components) {
   return " caused by components:" + names.join(", ")
 }
 function has(k,o) {
   return k in o
 }
-function matchComponent(node,component) {
-  if(component.matchElement) return component.selector === node.tagName
-  return node.hasAttribute(component.selector)
-}
-function applyComponent(node,component,components,transcludeFn) {
-  var linkFn = false
-  var childrenLinkFn = false
-
-  if(node.transclude) {
-    var clone = node.cloneNode(true)
-    if(node.transclude == "element") {
-      childrenLinkFn = Compiler.compileNode([clone],components,node.priority)
-    } else {
-      childrenLinkFn = Compiler.compileNode(node.children,components)
-    }
-  }
-
-  if(node.compile) {
-    linkFn = node.compile(node,childrenLinkFn || transcludeFn)
-  } else {
-    linkFn = component.link
-
-  }
-
-  return {
-    link: linkFn
-  }
-}
-
 var flatmap = _.compose(_.flatten,_.map)
 var byPriority = function(a,b) {
   return b.priority - a.priority
