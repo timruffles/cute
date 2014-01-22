@@ -12,7 +12,7 @@ function compile(nodes,components,maxPriorty,transcludeFn) {
 
   if(maxPriorty) {
     componentsToApply = componentsToApply.filter(function(c) {
-      return c.priority || 0 < maxPriorty
+      return (c.priority || 0) < maxPriorty
     })
   }
 
@@ -20,9 +20,9 @@ function compile(nodes,components,maxPriorty,transcludeFn) {
     return compileNode(node,componentsToApply,components,transcludeFn)
   })
 
-  return publicLinkFn
+  return passScopeToComponents
   
-  function publicLinkFn(scope,attachFn) {
+  function passScopeToComponents(scope,attachFn) {
     var nodesToLink = nodeSetups.map(function(setup,index) {
       var node = attachFn ? setup.node.cloneNode(true) : setup.node
       setup.link(scope,node)
@@ -71,13 +71,13 @@ function compileNode(node,componentsForNode,components,transcludeFn) {
     return step.link
   })
 
-  if(!compilationStopped && node.children.length > 0) {
+  if(!compilationStopped && node.children && node.children.length > 0) {
     childLinkFn = compile(node.children,components)
   }
 
   return {node: node, link: nodeLinkFn}
 
-  function nodeLinkFn(scope) {
+  function nodeLinkFn(scope,node) {
     links.forEach(function(linkFn) {
       linkFn(scope,node)
     })
@@ -92,10 +92,10 @@ function applyComponent(node,component,componentsForNode,components,transcludeFn
 
   if(component.transclude) {
     var clone = node.cloneNode(true)
-    if(node.transclude == "element") {
+    if(component.transclude === "element") {
       var placeholder = document.createComment(component.selector)
       node.parentElement.replaceChild(placeholder,node)
-      transcludeFn = compile([clone],components,node.priority)
+      transcludeFn = compile([clone],components,component.priority)
       node = placeholder
     } else {
       node.innerHTML = ""
@@ -104,6 +104,8 @@ function applyComponent(node,component,componentsForNode,components,transcludeFn
   }
 
   if(component.compile) {
+    // should this be original node, or that via transclude
+    // - or is normalising attributes way to go
     linkFn = component.compile(node,transcludeFn)
   } else {
     linkFn = component.link

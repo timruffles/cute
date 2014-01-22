@@ -61,7 +61,7 @@ describe("scope",function() {
       done()
     })
   })
-  it("watch collection works on arrays",function() {
+  it("watch works on arrays",function() {
     var s = new Cute.Scope
 
     var spy = sinon.spy()
@@ -82,7 +82,7 @@ describe("scope",function() {
     spy.getCall(2).calledWithMatch([1,2],[1])
     spy.getCall(3).calledWithMatch([1],[1,2])
   })
-  it("watch collection works on objects",function() {
+  it("watch works on objects",function() {
     var s = new Cute.Scope
 
     var spy = sinon.spy()

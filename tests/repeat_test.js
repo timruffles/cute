@@ -1,32 +1,38 @@
-xdescribe("repeat test",function() {
+describe("repeat test",function() {
   var components = []
   before(function() {
     Cute.registerComponents(components,{})
   })
   var tpl = join(
     "<ul>",
-    "  <li te-repeat=rows>",
+    "  <li te-repeat='return s.rows'>",
     "    <span class=fromItem te-bind=item.name></span>",
     "    <span class=fromParent te-bind=fromParent></span>",
     "  </li>",
     "</ul>"
   )
-  it("removes node if source is empty",function() {
-    var el = compileLink(tpl,{
+  it.only("has only placeholder node if data empty",function() {
+    var scope = makeScope({
       rows: []
-    })
-    assert.equal(el.childNodes.length,0)
+    })   
+    var el = compileLink(tpl,scope)
+    scope.$apply()
+    // IS compile recursing down into child els? prob not
+    assert.equal(el[0].querySelectorAll("li").length,0)
   })
   describe("property access",function() {
     var el
+    var scope
     before(function() {
-      el = compileLink(tpl,{
+      scope = makeScope({
         rows: [
           {name: "a"},
           {name: "b"},
           {name: "c"},
         ]
       })
+      el = compileLink(tpl,scope)
+      scope.$apply()
     })
     it("sets scope correctly for items",function() {
       assert.equal(el[0].querySelector(".fromItem").innerText,"a")
@@ -39,12 +45,13 @@ xdescribe("repeat test",function() {
   })
 
   function compileLink(tpl,scope) {
-    var el
-    var link = Cute.compile(tpl,components,null,null,function(_el) {
-      el = _el
-    })
-    link(scope)
-    return el
+    var link = Cute.compile(tpl,components,null,null)
+    return link(scope)
+  }
+  function makeScope(data) {
+    var scope = new Cute.Scope
+    _.extend(scope,data)
+    return scope
   }
 })
 

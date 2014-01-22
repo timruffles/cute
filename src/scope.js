@@ -4,6 +4,7 @@ function Scope() {
   this._watchers = []
   this._children = []
   this._queue = []
+  this._digesting = false
 }
 var UNCHANGED = function() {}
 Scope.find = function(el) {
@@ -18,6 +19,8 @@ Scope.prototype = {
     child.parent = this
     this._children.push(child)
     return child
+  },
+  $destroy: function() {
   },
   $watch: function(watch,handler) {
     var setup = {$watch:watch,handler:handler,previous:UNCHANGED};
@@ -83,19 +86,16 @@ Scope.prototype = {
     }
     return scope
   },
-  $apply: (function() {
-    var queued = false
-    return function(fn) {
-      if(queued) throw new Error("$digest loop already running")
-      if(fn) fn()
-      if(queued) return
-      queued = true
-      setTimeout(function() {
-        queued = false
-        this._apply()
-      }.bind(this))
-    }
-  })(),
+  $apply: function(fn) {
+    if(this._digesting) throw new Error("$digest loop already running")
+    if(fn) fn()
+    if(this._digesting) return
+    this._digesting = true
+    setTimeout(function() {
+      this._digesting = false
+      this._apply()
+    }.bind(this))
+  },
   _apply: function() {
     this._findRoot().$digest()
   },

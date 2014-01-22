@@ -14,7 +14,7 @@ describe("compiler",function() {
     xit("accepts node",function() {
     })
 
-    it.only("compiles whole tree of nodes",function() {
+    it("compiles whole tree of nodes",function() {
 
       var testComponent = {
         selector: "FOO",
@@ -24,7 +24,7 @@ describe("compiler",function() {
         }
       }
 
-      var el = toDom('<div><span foo></span></div>')
+      var el = toDom('<div><span><span foo></span></span></div>')
       var linkFn = Cute.compile(el,[testComponent])
       var compiledEl = linkFn({})
 

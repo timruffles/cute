@@ -18,6 +18,7 @@ Check out a [demo page](http://timruffles.github.io/cute.js).
 - Configuarability costs too much. One attribute style for cute core components: 'te-'
 - It's Just Javascript. No "Angular script".
 - Plays badly with "legacy code". Bet on Javascript: all frameworks will be legacy code, JS won't
+- Avoid problems around identity but enforcing clean code. If you want non-strict equality, supply a hashing fn for good performance
 
 ## Goals
 

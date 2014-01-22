@@ -1,0 +1,19 @@
+<div inline-controller>
+  <h3>Ordering & identity demo</h3>
+  <script type=text/cute>
+    controller.definition = function(scope) {
+      scope.data = [
+        { name: "bob" },
+        { name: "squidly" },
+        { name: "starfish" },
+      ]
+    }
+  </script>
+  <ul>
+    <li te-repeat='spongeBobCast'>
+      {{ name }}
+    </li>
+  </ul>
+  <button te-click=byName()>By name</button>
+  <button te-click=randomly()>Randomly</button>
+</div>
