@@ -6,41 +6,41 @@ describe("repeat test",function() {
   var tpl = join(
     "<ul>",
     "  <li te-repeat='return s.rows'>",
-    "    <span class=fromItem te-bind=item.name></span>",
-    "    <span class=fromParent te-bind=fromParent></span>",
+    "    <span class=fromItem te-bind='return s.item.name'></span>",
+    "    <span class=fromParent te-bind='return s.fromParent'></span>",
     "  </li>",
     "</ul>"
   )
-  it.only("has only placeholder node if data empty",function() {
+  it("has only placeholder node if data empty",function() {
     var scope = makeScope({
       rows: []
     })   
     var el = compileLink(tpl,scope)
     scope.$apply()
-    // IS compile recursing down into child els? prob not
     assert.equal(el[0].querySelectorAll("li").length,0)
   })
   describe("property access",function() {
     var el
     var scope
-    before(function() {
-      scope = makeScope({
-        rows: [
-          {name: "a"},
-          {name: "b"},
-          {name: "c"},
-        ]
-      })
-      el = compileLink(tpl,scope)
+    before(function(done) {
+      var parent = makeScope({fromParent:"fromParent"})
+      scope = parent.$child()
+      scope.rows = [
+        {name: "a"},
+        {name: "b"},
+        {name: "c"},
+      ]
+      el = compileLink(tpl,scope)[0]
       scope.$apply()
+      setTimeout(done)
     })
     it("sets scope correctly for items",function() {
-      assert.equal(el[0].querySelector(".fromItem").innerText,"a")
-      assert.equal(el[2].querySelector(".fromItem").innerText,"c")
+      assert.equal(el.children[0].querySelector(".fromItem").innerText,"a")
+      assert.equal(el.children[2].querySelector(".fromItem").innerText,"c")
     })
     it("can access properties in parent",function() {
-      assert.equal(el[0].querySelector(".fromParent").innerText,"fromParent")
-      assert.equal(el[2].querySelector(".fromParent").innerText,"fromParent")
+      assert.equal(el.children[0].querySelector(".fromParent").innerText,"fromParent")
+      assert.equal(el.children[1].querySelector(".fromParent").innerText,"fromParent")
     })
   })
 
@@ -50,7 +50,7 @@ describe("repeat test",function() {
   }
   function makeScope(data) {
     var scope = new Cute.Scope
-    _.extend(scope,data)
+    _.extend(scope,data || {})
     return scope
   }
 })

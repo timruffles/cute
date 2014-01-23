@@ -1,4 +1,4 @@
-(function() {
+;(function() {
 
 function compile(nodes,components,maxPriorty,transcludeFn) {
 
@@ -17,7 +17,8 @@ function compile(nodes,components,maxPriorty,transcludeFn) {
   }
 
   var nodeSetups = _.map(nodes,function(node) {
-    return compileNode(node,componentsToApply,components,transcludeFn)
+    var attrs = readAttributes(node)
+    return compileNode(node,attrs,componentsToApply,components,transcludeFn)
   })
 
   return passScopeToComponents
@@ -25,7 +26,8 @@ function compile(nodes,components,maxPriorty,transcludeFn) {
   function passScopeToComponents(scope,attachFn) {
     var nodesToLink = nodeSetups.map(function(setup,index) {
       var node = attachFn ? setup.node.cloneNode(true) : setup.node
-      setup.link(scope,node)
+      var attrs = readAttributes(node)
+      setup.link(scope,node,attrs)
       return node
     })
     if(attachFn) attachFn(nodesToLink,scope)
@@ -56,7 +58,7 @@ function tap(x) {
  * - it recurses with maxPriority to create the linker for transcludeFn
  *
  * */
-function compileNode(node,componentsForNode,components,transcludeFn) {
+function compileNode(node,attrs,componentsForNode,components,transcludeFn) {
 
   var childLinkFn
 
@@ -65,32 +67,34 @@ function compileNode(node,componentsForNode,components,transcludeFn) {
   var compilationStopped = false
 
   var links = matched.map(function(component) {
-    var step = applyComponent(node,component,componentsForNode,components,transcludeFn)
+    var step = applyComponent(node,attrs,component,componentsForNode,components,transcludeFn)
     node = step.node || node
     if(!compilationStopped) compilationStopped = step.stopCompilation
     return step.link
   })
 
-  if(!compilationStopped && node.children && node.children.length > 0) {
-    childLinkFn = compile(node.children,components)
-  }
-
   return {node: node, link: nodeLinkFn}
 
-  function nodeLinkFn(scope,node) {
+  function nodeLinkFn(scope,node,attrs) {
     links.forEach(function(linkFn) {
-      linkFn(scope,node)
+      linkFn(scope,node,attrs)
     })
-    if(childLinkFn) childLinkFn(scope)
+    if(!compilationStopped && node.children && node.children.length > 0) {
+      childLinkFn = compile(node.children,components)
+      childLinkFn(scope)
+    }
+    // child link FN has already closed over the clone?
+    //if(childLinkFn) childLinkFn(scope)
   } 
 }
 function noop() {}
-function applyComponent(node,component,componentsForNode,components,transcludeFn) {
+function applyComponent(node,attrs,component,componentsForNode,components,transcludeFn) {
   var linkFn
   var transcludeFn
   var stopCompilation
 
   if(component.transclude) {
+    stopCompilation = true
     var clone = node.cloneNode(true)
     if(component.transclude === "element") {
       var placeholder = document.createComment(component.selector)
@@ -106,12 +110,12 @@ function applyComponent(node,component,componentsForNode,components,transcludeFn
   if(component.compile) {
     // should this be original node, or that via transclude
     // - or is normalising attributes way to go
-    linkFn = component.compile(node,transcludeFn)
+    linkFn = component.compile(node,attrs,transcludeFn)
   } else {
     linkFn = component.link
   }
 
-  return {node: node, link: linkFn}
+  return {node: node, link: linkFn, stopCompilation: stopCompilation}
 }
 function findComponents(node,components) {
   var present = components.filter(function(component) {
@@ -151,9 +155,37 @@ var byPriority = function(a,b) {
   return b.priority - a.priority
 }
 
+function readAttributes(node) {
+  if(node.nodeType !== Node.ELEMENT_NODE) return {}
+  var attrs = {}
+  for(var i = 0, len = node.attributes.length; i < len; i++) {
+    var attr = node.attributes[i]
+    attrs[normaliseKeyToCamelCase(attr.name)] = attr.value
+  }
+  return attrs
+}
+
+function normaliseKeyToCamelCase(str) {
+  // research with: var as = $x("//@*").reduce(function(counts,c) { counts[c.name] = (counts[c.name] || 0) + 1; return counts},{}); Object.keys(as).sort(function(a,b) { return as[b] - as[a] }) - looks like class + href are most common
+  if(str === "class" || str === "href" || str === "id" || str === "name" || str === "style" || str === "type" || str === "value") {
+    return str
+  }
+  if(str.indexOf("-") !== -1) {
+    return hyphenToCamel(str,"-")
+  }
+  return str 
+}
+var hyphenRe = new RegExp("-(\\w)","g")
+function hyphenToCamel(str) {
+  return str.replace(hyphenRe,function(x,after) {
+    return after.toUpperCase()
+  })
+}
+
 Cute.compile = compile
 Cute._dbg.compiler = {
-  findComponents: findComponents
+  findComponents: findComponents,
+  readAttributes: readAttributes
 }
 
 })()

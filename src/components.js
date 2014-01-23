@@ -1,4 +1,4 @@
-(function() {
+;(function() {
 
 Cute.components = {
   add: function(set,sel,fn) {

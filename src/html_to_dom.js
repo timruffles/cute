@@ -1,4 +1,4 @@
-(function() {
+;(function() {
 
 Cute.htmlToDom = function(str) {
   var container = document.createElement("div")

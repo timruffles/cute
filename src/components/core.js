@@ -1,11 +1,10 @@
-(function() {
-
+;(function() {
 
 Cute.registerComponents = function(components,controllers) {
 
   var add = _.partial(Cute.components.add,components)
 
-  add("te-controller",function(el,scope,source) {
+  add("te-controller",function(scope,el,source) {
     var name = el.getAttribute("te-controller")
     var controller = source.controllers[name]
     if(!controller) throw new Error("Missing controller " + name)
@@ -15,19 +14,19 @@ Cute.registerComponents = function(components,controllers) {
   })
   add("a",{
     matchElement: true,
-    link: function(el,scope) {
+    link: function(scope,el) {
       el.addEventListener("click",function(evt) {
         if(el.getAttribute("href") === "") evt.preventDefault()
       })
     }
   })
-  add("te-init",function(el,scope) {
+  add("te-init",function(scope,el) {
     var src = el.getAttribute("te-init")
     scope.$apply(function() {
       scope.$eval(src)
     })
   })
-  add("te-click",function(el,scope) {
+  add("te-click",function(scope,el) {
     var expression = el.getAttribute("te-click")
     el.addEventListener("click",function() {
       scope.$apply(function() {
@@ -35,13 +34,13 @@ Cute.registerComponents = function(components,controllers) {
       })
     })
   })
-  add("te-bind",function(el,scope) {
+  add("te-bind",function(scope,el) {
     var expression = el.getAttribute("te-bind")
     scope.$watch(expression,function(val) {
       el.innerHTML = val
     })
   })
-  add("te-submit",function(el,scope) {
+  add("te-submit",function(scope,el) {
     var expression = el.getAttribute("te-click")
     el.addEventListener("submit",function(event) {
       event.preventDefault()
@@ -55,7 +54,7 @@ Cute.registerComponents = function(components,controllers) {
     priority: 1000,
     transclude: "element",
     compile: function(el,transcludeFn) {
-      return function(el,scope) {
+      return function(scope,el) {
 
       }
     }
@@ -64,56 +63,34 @@ Cute.registerComponents = function(components,controllers) {
     stopCompilation: true,
     priority: 1000,
     transclude: "element",
-    compile: function(containerEl,transcludeFn) {
+    compile: function(containerEl,attrs,transcludeFn) {
       return function(scope,el) {
-        var firstEl = containerEl
-        var expr = el.getAttribute("te-repeat")
-        var hasher = el.hasAttribute("hash-by") ? scope.$eval(el.getAttribute("hash-by")) : mutatingHashFn
+        var expr = attrs.teRepeat
+        var hasher = attrs.hashBy ? scope.$eval(attrs.hashBy) : mutatingHashFn
         var elements = {}
+
         scope.$watch(expr,function(now,was) {
           return placeholderHandler(now)
-          var els = _.clone(elements)
-          if(!now || now.length === 0) {
-            removed(was || [])
-          } else if (!was || was.length === 0) {
-            add(now || [])
-          } else {
-            var results = difference(now,was,hasher)
-            _.each(results.removed,function(s,k) {
-              Cute.animate("te-repeat-remove",els[k],function() {
-                var el = els[k]
-                el.$scope.$destroy()
-                el.parentElement.removeChild(el)
-              })
-            })
-            var prevEl
-            results.newOrder.forEach(function(setup) {
-              var hash = setup.hash
-              var el = els[hash]
-              if(el) {
-                containerEl.children[0].insertBefore
-              } else {
-              }
-            })
-          }
-
         })
 
+        var parent 
         function placeholderHandler(xs) {
+          // TODO
+          parent = parent || containerEl.parentElement
+          parent.innerHTML = ''
           // TODO insert before repeatedly, or sth
-          containerEl.innerHTML = ""
-          xs.forEach(function(x) {
-            containerEl.append(add(x,index))
+          ;(xs || []).forEach(function(x,index) {
+            parent.appendChild(add(x,index))
           })
         }
 
         function add(item,index) {
           var elScope = scope.$child()
           elScope.item = item
-          elScope.$index = index
+          elScope.index = index
           var newEl
           transcludeFn(elScope,function(el) {
-            newEl = el
+            newEl = el[0]
           })
           return newEl
         }

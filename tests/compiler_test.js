@@ -5,6 +5,23 @@ describe("compiler",function() {
     baseComponents = []
     Cute.registerComponents(baseComponents)
   })
+
+  describe("attr normalisation",function() {
+    var attrs
+    before(function() {
+      var el = toDom("<a href='foo' some-component='bar' something_else='baz'></a>")
+      attrs = Cute._dbg.compiler.readAttributes(el)
+    })
+    it("normalises hypen-case",function() {
+      assert.equal(attrs.someComponent,"bar")
+    })
+    it("exposes snake_case unormalised",function() {
+      assert.equal(attrs.something_else,"baz")
+    })
+    it("exposes normal attrs",function() {
+      assert.equal(attrs.href,"foo")
+    })
+  })
   
   describe("public API",function() {
     xit("accepts strings",function() {
@@ -36,7 +53,7 @@ describe("compiler",function() {
       var testComponent = {
         selector: "FOO",
         transclude: true,
-        compile: function(el,transcludeFn) {
+        compile: function(el,attrs,transcludeFn) {
           return function link() {
             _.range(4).forEach(function() {
               transcludeFn({},function(els) {

@@ -1,4 +1,4 @@
-(function() {
+;(function() {
 
 function Scope() {
   this._watchers = []

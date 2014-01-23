@@ -1,19 +1,31 @@
-<div inline-controller>
-  <h3>Ordering & identity demo</h3>
-  <script type=text/cute>
-    controller.definition = function(scope) {
-      scope.data = [
-        { name: "bob" },
-        { name: "squidly" },
-        { name: "starfish" },
-      ]
-    }
+<!DOCTYPE html>
+<head>
+  <meta charset='utf-8'>
+</head>
+<body>
+  <div>
+    <h3>Simple repeat</h3>
+    <button te-click='s.items.push({name: "new"})'>Add</button>
+    <ul>
+      <li te-repeat='return s.items'>
+        <span te-bind='return s.item.name'></span>
+      </li>
+    </ul>
+  </div>
+
+  <script src=../../dist.js></script>
+  <script>
+    var components = []
+    Cute.registerComponents(components)
+    var rootAttach = Cute.compile(document.body,components)
+    var rootScope = new Cute.Scope
+    rootScope.items = [
+      { name: "bob" },
+      { name: "squidly" },
+      { name: "starfish" },
+    ]
+    rootAttach(rootScope)
+    rootScope.$apply()
   </script>
-  <ul>
-    <li te-repeat='spongeBobCast'>
-      {{ name }}
-    </li>
-  </ul>
-  <button te-click=byName()>By name</button>
-  <button te-click=randomly()>Randomly</button>
-</div>
+
+</body>
