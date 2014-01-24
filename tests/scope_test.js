@@ -61,6 +61,32 @@ describe("scope",function() {
       done()
     })
   })
+  it("keeps digesting until all watchers have settled",function() {
+    var s1 = new Cute.Scope
+    var s2 = s1.$child()
+    s2.foo = 1
+
+    var times = 5
+    s2.$watch("return s.foo",function(val) {
+      if(--times) s2.foo += 1
+    })
+    s1.$digest()
+
+    assert.equal(0,times)
+  })
+  it("throws if maxIterations are exceeded",function() {
+    var s1 = new Cute.Scope
+    var s2 = s1.$child()
+    s2.foo = 1
+
+    assert.throws(function() {
+      var times = 200
+      s2.$watch("return s.foo",function() {
+        if(--times) s2.foo += 1
+      })
+      s1.$digest()
+    },Cute.Scope.MAX_ITERATIONS_EXCEEDED)
+  })
   it("watch works on arrays",function() {
     var s = new Cute.Scope
 
@@ -116,4 +142,22 @@ describe("scope",function() {
 
   })
   xit("can't $apply inside an $apply")
+  describe("internal",function() {
+    describe("equality algorithm",function() {
+      var eq = Cute.Scope.prototype._equal
+      var a = {}
+      var b = {}
+      it("shallow compares arrays",function() {
+        assert(eq([a,b],[a,b]))
+        assert.notOk(eq([{},b],[a,b]))
+      })
+      it("respects array order",function() {
+        assert.notOk(eq([b,a],[a,b]))
+      })
+      it("shallow compares objects",function() {
+        assert(eq({a:a,b:b},{a:a,b:b}))
+        assert.notOk(eq({a:{},b:b},{a:a,b:b}))
+      })
+    })
+  })
 })

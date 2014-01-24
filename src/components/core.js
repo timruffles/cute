@@ -4,9 +4,9 @@ Cute.registerComponents = function(components,controllers) {
 
   var add = _.partial(Cute.components.add,components)
 
-  add("te-controller",function(scope,el,source) {
+  add("te-controller",function(scope,el) {
     var name = el.getAttribute("te-controller")
-    var controller = source.controllers[name]
+    var controller = controllers[name]
     if(!controller) throw new Error("Missing controller " + name)
     var child = scope.$child()
     el.scope = child

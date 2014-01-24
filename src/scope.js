@@ -4,8 +4,9 @@ function Scope() {
   this._watchers = []
   this._children = []
   this._queue = []
-  this._digesting = false
+  this._treeStatus = {digesting: false, root: this}
 }
+Scope.MAX_ITERATIONS_EXCEEDED = "Max iterations exceeded"
 var UNCHANGED = function() {}
 Scope.find = function(el) {
   do {
@@ -17,6 +18,7 @@ Scope.prototype = {
     var child = Object.create(this)
     Scope.call(child)
     child.parent = this
+    child.treeStatus = this.treeStatus
     this._children.push(child)
     return child
   },
@@ -27,22 +29,36 @@ Scope.prototype = {
     this._watchers.push(setup)
   },
   $digest: function() {
-    this._watchers.forEach(this._digestOne,this)
-    this._children.forEach(function(c) { c.$digest() })
+    var changed = false
+    var iterations = 20
+    do {
+      if(!iterations) throw new Error(Scope.MAX_ITERATIONS_EXCEEDED)
+      iterations -= 1
+      var watcherChanged = this._watchers.reduce(function(anyChanged,watcher) {
+        var watcherChanged = this._digestOne(watcher)
+        return anyChanged || watcherChanged
+      }.bind(this),false)
+      var childrenChanged = this._children.reduce(function(anyChanged,child) {
+        var childChanged = child.$digest()
+        return anyChanged || childChanged
+      },false)
+      changed = watcherChanged || childrenChanged
+    } while(changed)
   },
   _digestOne: function(setup) {
     var val = this.$eval(setup.$watch)
-    if(this._equal(val,setup.previous)) return
+    if(val === setup.previous || this._equal(val,setup.previous)) return
     setup.handler(val,setup.previous === UNCHANGED ? undefined : setup.previous)
     // shallow clone
     setup.previous = this._clone(val);
+    return true
   },
   _clone: function(x) {
     if(typeof x != "object") return x
     return _.clone(x)
   },
   // customised version of underscore's isEqual
-  _equal: function(a,b,noRecurse) {
+  _equal: function equal(a,b,noRecurse) {
     // ===, with case for fix 0 != -0
     if (a === b) return a !== 0 || 1 / a == 1 / b
     var className = toString.call(a)
@@ -71,12 +87,16 @@ Scope.prototype = {
                a.ignoreCase == b.ignoreCase
     }
     if(typeof a != 'object' || typeof b != 'object') return false
+    if(a && b) {
+      if(a.isEqual) return a.isEqual(b)
+      if(b.isEqual) return b.isEqual(a)
+    }
     // if we're here, we've got two objects that aren't === and we're starting a deep compare, so bail
     if(noRecurse) return false
     // limited to shallow equality comparison
     if(_.size(a) !== _.size(b)) return false
     return _.every(a,function(v,k) {
-      return this._equal(b[k],v)
+      return equal(b[k],v,true)
     },this)
   },
   _findRoot: function() {
@@ -87,17 +107,10 @@ Scope.prototype = {
     return scope
   },
   $apply: function(fn) {
-    if(this._digesting) throw new Error("$digest loop already running")
-    if(fn) fn()
-    if(this._digesting) return
-    this._digesting = true
-    setTimeout(function() {
-      this._digesting = false
-      this._apply()
-    }.bind(this))
-  },
-  _apply: function() {
+    var val
+    if(fn) val = this.$eval(fn)
     this._findRoot().$digest()
+    return val
   },
   $eval: function(src) {
     var fn = typeof src === "function" ? fn : new Function("scope","s",src)

@@ -83,8 +83,6 @@ function compileNode(node,attrs,componentsForNode,components,transcludeFn) {
       childLinkFn = compile(node.children,components)
       childLinkFn(scope)
     }
-    // child link FN has already closed over the clone?
-    //if(childLinkFn) childLinkFn(scope)
   } 
 }
 function noop() {}
