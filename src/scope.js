@@ -4,7 +4,7 @@ function Scope(attrs) {
   this._watchers = []
   this._children = []
   this._queue = []
-  this._treeStatus = {digesting: false, root: this}
+  this._tree = {root: this}
   if(attrs) _.extend(this,attrs)
 }
 Scope.MAX_ITERATIONS_EXCEEDED = "Max iterations exceeded"
@@ -19,7 +19,7 @@ Scope.prototype = {
     var child = Object.create(this)
     Scope.call(child,attrs)
     child.parent = this
-    child.treeStatus = this.treeStatus
+    child._tree = this._tree
     this._children.push(child)
     return child
   },
@@ -101,11 +101,7 @@ Scope.prototype = {
     },this)
   },
   _findRoot: function() {
-    var scope = this
-    while(scope.parent) {
-      scope = scope.parent
-    }
-    return scope
+    return this._tree.root
   },
   $apply: function(fn) {
     var val
