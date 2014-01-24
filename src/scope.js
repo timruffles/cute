@@ -1,12 +1,10 @@
 ;(function() {
 
-  var ids = 0
 function Scope(attrs) {
   this._watchers = []
   this._children = []
   this._queue = []
   this._treeStatus = {digesting: false, root: this}
-  this.id = ids++
   if(attrs) _.extend(this,attrs)
 }
 Scope.MAX_ITERATIONS_EXCEEDED = "Max iterations exceeded"
