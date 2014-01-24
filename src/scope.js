@@ -1,10 +1,13 @@
 ;(function() {
 
-function Scope() {
+  var ids = 0
+function Scope(attrs) {
   this._watchers = []
   this._children = []
   this._queue = []
   this._treeStatus = {digesting: false, root: this}
+  this.id = ids++
+  if(attrs) _.extend(this,attrs)
 }
 Scope.MAX_ITERATIONS_EXCEEDED = "Max iterations exceeded"
 var UNCHANGED = function() {}
@@ -14,9 +17,9 @@ Scope.find = function(el) {
   } while(el = el.parentNode)
 }
 Scope.prototype = {
-  $child: function() {
+  $child: function(attrs) {
     var child = Object.create(this)
-    Scope.call(child)
+    Scope.call(child,attrs)
     child.parent = this
     child.treeStatus = this.treeStatus
     this._children.push(child)
@@ -50,7 +53,7 @@ Scope.prototype = {
     if(val === setup.previous || this._equal(val,setup.previous)) return
     setup.handler(val,setup.previous === UNCHANGED ? undefined : setup.previous)
     // shallow clone
-    setup.previous = this._clone(val);
+    setup.previous = this._clone(val)
     return true
   },
   _clone: function(x) {
@@ -113,7 +116,7 @@ Scope.prototype = {
     return val
   },
   $eval: function(src) {
-    var fn = typeof src === "function" ? fn : new Function("scope","s",src)
+    var fn = typeof src === "function" ? src : new Function("scope","s",src)
     return fn(this,this)
   },
 }

@@ -4,13 +4,14 @@ Cute.registerComponents = function(components,controllers) {
 
   var add = _.partial(Cute.components.add,components)
 
-  add("te-controller",function(scope,el) {
-    var name = el.getAttribute("te-controller")
-    var controller = controllers[name]
-    if(!controller) throw new Error("Missing controller " + name)
-    var child = scope.$child()
-    el.scope = child
-    new controller(el,child)
+  add("te-controller",{
+    scope: true,
+    link: function(scope,el) {
+      var name = el.getAttribute("te-controller")
+      var controller = controllers[name]
+      if(!controller) throw new Error("Missing controller " + name)
+      new controller(scope)
+    }
   })
   add("a",{
     matchElement: true,
@@ -27,6 +28,7 @@ Cute.registerComponents = function(components,controllers) {
     })
   })
   add("te-click",function(scope,el) {
+    console.log("click",scope.id)
     var expression = el.getAttribute("te-click")
     el.addEventListener("click",function() {
       scope.$apply(function() {

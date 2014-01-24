@@ -89,20 +89,45 @@ describe("compiler",function() {
     })
   })
 
+  describe("scope",function() {
+    it("creates a child scope when passed true",function() {
+      var hasScope = {
+        selector: "FOO",
+        scope: true
+      }
+      var el = toDom('<div FOO></div>')
+      var linkFn = Cute.compile(el,[hasScope])
+      var scope = new Cute.Scope
+      linkFn(scope)
+      assert.equal(scope,el.scope.parent)
+    })
+    it("creates an isolated scope if passed an object",function() {
+      var hasScope = {
+        selector: "FOO",
+        scope: {override: true}
+      }
+      var el = toDom('<div FOO></div>')
+      var linkFn = Cute.compile(el,[hasScope])
+      var scope = new Cute.Scope({override: function() {}})
+      linkFn(scope)
+      assert.notEqual(scope.override,el.scope.override)
+    })
+  })
+
   describe("internal",function() {
     it("components found in simple case",function() {
       var el = toDom("<div te-repeat></div>")
-      var components = Cute._dbg.compiler.findComponents(el,baseComponents)
+      var components = Cute._dbg.compiler.findComponents(el,baseComponents).components
       assert.equal("TE-REPEAT",_.pluck(components,"selector").join(","))
     })
     it("components with lower priority are not matched",function() {
       var el = toDom("<div te-repeat te-show></div>")
-      var components = Cute._dbg.compiler.findComponents(el,baseComponents)
+      var components = Cute._dbg.compiler.findComponents(el,baseComponents).components
       assert.equal("TE-REPEAT",_.pluck(components,"selector").join(","))
     })
     it("multiple components can be matched",function() {
       var el = toDom("<div te-submit te-init></div>")
-      var components = Cute._dbg.compiler.findComponents(el,baseComponents)
+      var components = Cute._dbg.compiler.findComponents(el,baseComponents).components
       assert.sameMembers(["TE-SUBMIT","TE-INIT"],_.pluck(components,"selector"))
     })
   })

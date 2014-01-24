@@ -62,7 +62,9 @@ function compileNode(node,attrs,componentsForNode,components,transcludeFn) {
 
   var childLinkFn
 
-  var matched = findComponents(node,componentsForNode)
+  var componentState = findComponents(node,componentsForNode)
+  var matched = componentState.components
+  var newScope = componentState.scope
 
   var compilationStopped = false
 
@@ -70,12 +72,16 @@ function compileNode(node,attrs,componentsForNode,components,transcludeFn) {
     var step = applyComponent(node,attrs,component,componentsForNode,components,transcludeFn)
     node = step.node || node
     if(!compilationStopped) compilationStopped = step.stopCompilation
-    return step.link
+    return step.link || noop
   })
 
   return {node: node, link: nodeLinkFn}
 
   function nodeLinkFn(scope,node,attrs) {
+    if(newScope) {
+      scope = _.isObject(newScope) ? new Cute.Scope(newScope) : scope.$child()
+    }
+    node.scope = scope
     links.forEach(function(linkFn) {
       linkFn(scope,node,attrs)
     })
@@ -114,8 +120,12 @@ function applyComponent(node,attrs,component,componentsForNode,components,transc
   }
 
   return {node: node, link: linkFn, stopCompilation: stopCompilation}
+
 }
 function findComponents(node,components) {
+
+  var scope = false
+
   var present = components.filter(function(component) {
     return matchComponent(node,component)
   })
@@ -133,7 +143,13 @@ function findComponents(node,components) {
     })
   }
 
-  return present
+  var hasScope = present.filter(_.partial(has,"scope"))
+  if(hasScope.length > 0) {
+    if(hasScope.length > 1) throw new Error("duplicate scope present," + formatComponentsForError(hasScope))
+    scope = hasScope[0].scope
+  }
+
+  return {components: present, scope: scope}
 }
 
 

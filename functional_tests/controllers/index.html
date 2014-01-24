@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<head>
+  <meta charset='utf-8'>
+</head>
+<body>
+  <div te-controller='eg'>
+    <h3>Controller</h3>
+    <h1>Hello: you've clicked <span te-bind='return s.foo'></span> times</h1>
+    <button te-click='s.addOne()'>Add</button>
+  </div>
+
+  <script src=../../dist.js></script>
+  <script>
+    var components = []
+    var controllers = {}
+    Cute.registerComponents(components,controllers)
+
+    controllers.eg = function(scope) {
+      scope.foo = 0
+      scope.addOne = function() {
+        scope.foo += 1
+      }
+    }
+
+    var rootAttach = Cute.compile(document.body,components)
+    var rootScope = new Cute.Scope
+    rootAttach(rootScope)
+    rootScope.$apply()
+  </script>
+
+</body>

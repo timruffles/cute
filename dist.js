@@ -6859,7 +6859,10 @@ function compileNode(node,attrs,componentsForNode,components,transcludeFn) {
 
   var childLinkFn
 
-  var matched = findComponents(node,componentsForNode)
+  var componentState = findComponents(node,componentsForNode)
+  var matched = componentState.components
+  var newScope = componentState.scope
+  if(newScope) console.log("NEW SCOPE" + node)
 
   var compilationStopped = false
 
@@ -6867,12 +6870,17 @@ function compileNode(node,attrs,componentsForNode,components,transcludeFn) {
     var step = applyComponent(node,attrs,component,componentsForNode,components,transcludeFn)
     node = step.node || node
     if(!compilationStopped) compilationStopped = step.stopCompilation
-    return step.link
+    return step.link || noop
   })
 
   return {node: node, link: nodeLinkFn}
 
   function nodeLinkFn(scope,node,attrs) {
+    if(newScope) {
+      scope = _.isObject(newScope) ? new Cute.Scope(newScope) : scope.$child()
+    }
+    console.log(node + "",scope.id)
+    node.scope = scope
     links.forEach(function(linkFn) {
       linkFn(scope,node,attrs)
     })
@@ -6880,8 +6888,6 @@ function compileNode(node,attrs,componentsForNode,components,transcludeFn) {
       childLinkFn = compile(node.children,components)
       childLinkFn(scope)
     }
-    // child link FN has already closed over the clone?
-    //if(childLinkFn) childLinkFn(scope)
   } 
 }
 function noop() {}
@@ -6913,8 +6919,12 @@ function applyComponent(node,attrs,component,componentsForNode,components,transc
   }
 
   return {node: node, link: linkFn, stopCompilation: stopCompilation}
+
 }
 function findComponents(node,components) {
+
+  var scope = false
+
   var present = components.filter(function(component) {
     return matchComponent(node,component)
   })
@@ -6932,7 +6942,13 @@ function findComponents(node,components) {
     })
   }
 
-  return present
+  var hasScope = present.filter(_.partial(has,"scope"))
+  if(hasScope.length > 0) {
+    if(hasScope.length > 1) throw new Error("duplicate scope present," + formatComponentsForError(hasScope))
+    scope = hasScope[0].scope
+  }
+
+  return {components: present, scope: scope}
 }
 
 
@@ -7013,12 +7029,16 @@ Cute.htmlToDom = function(str) {
 })()
 ;(function() {
 
-function Scope() {
+  var ids = 0
+function Scope(attrs) {
   this._watchers = []
   this._children = []
   this._queue = []
-  this._digesting = false
+  this._treeStatus = {digesting: false, root: this}
+  this.id = ids++
+  if(attrs) _.extend(this,attrs)
 }
+Scope.MAX_ITERATIONS_EXCEEDED = "Max iterations exceeded"
 var UNCHANGED = function() {}
 Scope.find = function(el) {
   do {
@@ -7026,10 +7046,11 @@ Scope.find = function(el) {
   } while(el = el.parentNode)
 }
 Scope.prototype = {
-  $child: function() {
+  $child: function(attrs) {
     var child = Object.create(this)
-    Scope.call(child)
+    Scope.call(child,attrs)
     child.parent = this
+    child.treeStatus = this.treeStatus
     this._children.push(child)
     return child
   },
@@ -7040,22 +7061,36 @@ Scope.prototype = {
     this._watchers.push(setup)
   },
   $digest: function() {
-    this._watchers.forEach(this._digestOne,this)
-    this._children.forEach(function(c) { c.$digest() })
+    var changed = false
+    var iterations = 20
+    do {
+      if(!iterations) throw new Error(Scope.MAX_ITERATIONS_EXCEEDED)
+      iterations -= 1
+      var watcherChanged = this._watchers.reduce(function(anyChanged,watcher) {
+        var watcherChanged = this._digestOne(watcher)
+        return anyChanged || watcherChanged
+      }.bind(this),false)
+      var childrenChanged = this._children.reduce(function(anyChanged,child) {
+        var childChanged = child.$digest()
+        return anyChanged || childChanged
+      },false)
+      changed = watcherChanged || childrenChanged
+    } while(changed)
   },
   _digestOne: function(setup) {
     var val = this.$eval(setup.$watch)
-    if(this._equal(val,setup.previous)) return
+    if(val === setup.previous || this._equal(val,setup.previous) || (isNaN(val) && isNaN(setup.previous))) return
     setup.handler(val,setup.previous === UNCHANGED ? undefined : setup.previous)
     // shallow clone
-    setup.previous = this._clone(val);
+    setup.previous = this._clone(val)
+    return true
   },
   _clone: function(x) {
     if(typeof x != "object") return x
     return _.clone(x)
   },
   // customised version of underscore's isEqual
-  _equal: function(a,b,noRecurse) {
+  _equal: function equal(a,b,noRecurse) {
     // ===, with case for fix 0 != -0
     if (a === b) return a !== 0 || 1 / a == 1 / b
     var className = toString.call(a)
@@ -7084,12 +7119,16 @@ Scope.prototype = {
                a.ignoreCase == b.ignoreCase
     }
     if(typeof a != 'object' || typeof b != 'object') return false
+    if(a && b) {
+      if(a.isEqual) return a.isEqual(b)
+      if(b.isEqual) return b.isEqual(a)
+    }
     // if we're here, we've got two objects that aren't === and we're starting a deep compare, so bail
     if(noRecurse) return false
     // limited to shallow equality comparison
     if(_.size(a) !== _.size(b)) return false
     return _.every(a,function(v,k) {
-      return this._equal(b[k],v)
+      return equal(b[k],v,true)
     },this)
   },
   _findRoot: function() {
@@ -7100,20 +7139,13 @@ Scope.prototype = {
     return scope
   },
   $apply: function(fn) {
-    if(this._digesting) throw new Error("$digest loop already running")
-    if(fn) fn()
-    if(this._digesting) return
-    this._digesting = true
-    setTimeout(function() {
-      this._digesting = false
-      this._apply()
-    }.bind(this))
-  },
-  _apply: function() {
+    var val
+    if(fn) val = this.$eval(fn)
     this._findRoot().$digest()
+    return val
   },
   $eval: function(src) {
-    var fn = typeof src === "function" ? fn : new Function("scope","s",src)
+    var fn = typeof src === "function" ? src : new Function("scope","s",src)
     return fn(this,this)
   },
 }
@@ -7127,13 +7159,14 @@ Cute.registerComponents = function(components,controllers) {
 
   var add = _.partial(Cute.components.add,components)
 
-  add("te-controller",function(scope,el,source) {
-    var name = el.getAttribute("te-controller")
-    var controller = source.controllers[name]
-    if(!controller) throw new Error("Missing controller " + name)
-    var child = scope.$child()
-    el.scope = child
-    new controller(el,child)
+  add("te-controller",{
+    scope: true,
+    link: function(scope,el) {
+      var name = el.getAttribute("te-controller")
+      var controller = controllers[name]
+      if(!controller) throw new Error("Missing controller " + name)
+      new controller(scope)
+    }
   })
   add("a",{
     matchElement: true,
@@ -7150,6 +7183,7 @@ Cute.registerComponents = function(components,controllers) {
     })
   })
   add("te-click",function(scope,el) {
+    console.log("click",scope.id)
     var expression = el.getAttribute("te-click")
     el.addEventListener("click",function() {
       scope.$apply(function() {
