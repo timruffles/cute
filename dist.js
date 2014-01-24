@@ -6862,7 +6862,6 @@ function compileNode(node,attrs,componentsForNode,components,transcludeFn) {
   var componentState = findComponents(node,componentsForNode)
   var matched = componentState.components
   var newScope = componentState.scope
-  if(newScope) console.log("NEW SCOPE" + node)
 
   var compilationStopped = false
 
@@ -6879,7 +6878,6 @@ function compileNode(node,attrs,componentsForNode,components,transcludeFn) {
     if(newScope) {
       scope = _.isObject(newScope) ? new Cute.Scope(newScope) : scope.$child()
     }
-    console.log(node + "",scope.id)
     node.scope = scope
     links.forEach(function(linkFn) {
       linkFn(scope,node,attrs)
@@ -7079,7 +7077,7 @@ Scope.prototype = {
   },
   _digestOne: function(setup) {
     var val = this.$eval(setup.$watch)
-    if(val === setup.previous || this._equal(val,setup.previous) || (isNaN(val) && isNaN(setup.previous))) return
+    if(val === setup.previous || this._equal(val,setup.previous)) return
     setup.handler(val,setup.previous === UNCHANGED ? undefined : setup.previous)
     // shallow clone
     setup.previous = this._clone(val)
@@ -7145,9 +7143,16 @@ Scope.prototype = {
     return val
   },
   $eval: function(src) {
-    var fn = typeof src === "function" ? src : new Function("scope","s",src)
+    var fn = typeof src === "function" ? src : new Function("scope","s",addImplicitReturn(src))
     return fn(this,this)
   },
+}
+
+function addImplicitReturn(expression) {
+  if(/^\s*[_$a-zA-Z]\w*(?:\.[$_\w]\w*(?:\([^\)]*\))?)*\s*$/.test(expression)) {
+    return 'return ' + expression
+  }
+  return expression
 }
 
 Cute.Scope = Scope

@@ -3,12 +3,12 @@
   <meta charset='utf-8'>
 </head>
 <body>
-  <div>
+  <div te-controller=demo>
     <h3>Simple repeat</h3>
     <button te-click='s.items.push({name: "new"})'>Add</button>
     <ul>
-      <li te-repeat='return s.items'>
-        <span te-bind='return s.item.name'></span>
+      <li te-repeat='s.items'>
+        <span te-bind='s.item.name'></span>
       </li>
     </ul>
   </div>
@@ -16,14 +16,17 @@
   <script src=../../dist.js></script>
   <script>
     var components = []
-    Cute.registerComponents(components)
+    Cute.registerComponents(components,{
+      demo: function(scope) {
+        scope.items = [
+          { name: "bob" },
+          { name: "squidly" },
+          { name: "starfish" },
+        ]
+      }
+    })
     var rootAttach = Cute.compile(document.body,components)
     var rootScope = new Cute.Scope
-    rootScope.items = [
-      { name: "bob" },
-      { name: "squidly" },
-      { name: "starfish" },
-    ]
     rootAttach(rootScope)
     rootScope.$apply()
   </script>

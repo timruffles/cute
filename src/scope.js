@@ -116,9 +116,16 @@ Scope.prototype = {
     return val
   },
   $eval: function(src) {
-    var fn = typeof src === "function" ? src : new Function("scope","s",src)
+    var fn = typeof src === "function" ? src : new Function("scope","s",addImplicitReturn(src))
     return fn(this,this)
   },
+}
+
+function addImplicitReturn(expression) {
+  if(/^\s*[_$a-zA-Z]\w*(?:\.[$_\w]\w*(?:\([^\)]*\))?)*\s*$/.test(expression)) {
+    return 'return ' + expression
+  }
+  return expression
 }
 
 Cute.Scope = Scope

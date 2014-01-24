@@ -61,6 +61,34 @@ describe("scope",function() {
       done()
     })
   })
+  it("doesn't require return for simple statements",function() {
+    var scope = new Cute.Scope({
+      $foo: "ok",
+      $foo_b2323Z: "ok",
+      foo: {
+        bar: "ok",
+        bux: {
+          baz: "ok"
+        },
+        baz: _.constant("ok")
+      },
+      qux: _.constant({foo: "ok"}),
+      buz: _.constant("ok")
+    })
+    ;[
+      "s.$foo",
+      " s.$foo",
+      "s.$foo   ",
+      "s.$foo",
+      "s.foo.bar",
+      "s.foo.bux.baz",
+      "  s.qux().foo",
+      "s.foo.baz() ",
+      "s.buz()"
+    ].forEach(function(str) {
+      assert.equal("ok",scope.$eval(str),"expected to add implicit return to '" + str + "'")
+    })
+  })
   it("keeps digesting until all watchers have settled",function() {
     var s1 = new Cute.Scope
     var s2 = s1.$child()
