@@ -7076,7 +7076,9 @@ Scope.prototype = {
   _digestOne: function(setup) {
     var val = this.$eval(setup.$watch)
     if(val === setup.previous || this._equal(val,setup.previous)) return
-    setup.handler(val,setup.previous === UNCHANGED ? undefined : setup.previous)
+    var previous = setup.previous
+    setup.previous = val
+    setup.handler(val,previous === UNCHANGED ? undefined : previous)
     // shallow clone
     setup.previous = this._clone(val)
     return true
@@ -7143,10 +7145,10 @@ Scope.prototype = {
 }
 
 function addImplicitReturn(expression) {
-  if(/^\s*[_$a-zA-Z]\w*(?:\.[$_\w]\w*(?:\([^\)]*\))?)*\s*$/.test(expression)) {
-    return 'return ' + expression
+  if(/\breturn\b/.test(expression)) {
+    return expression
   }
-  return expression
+  return 'return (' + expression + ')'
 }
 
 Cute.Scope = Scope
@@ -7154,7 +7156,9 @@ Cute.Scope = Scope
 })()
 ;(function() {
 
-Cute.registerComponents = function(components,controllers) {
+Cute.registerComponents = function(components,controllers,getTemplate) {
+
+  getTemplate = getTemplate || function() { throw new Error("No template loader") }
 
   var add = _.partial(Cute.components.add,components)
 
@@ -7182,7 +7186,6 @@ Cute.registerComponents = function(components,controllers) {
     })
   })
   add("te-click",function(scope,el) {
-    console.log("click",scope.id)
     var expression = el.getAttribute("te-click")
     el.addEventListener("click",function() {
       scope.$apply(function() {
@@ -7211,7 +7214,21 @@ Cute.registerComponents = function(components,controllers) {
     transclude: "element",
     compile: function(el,transcludeFn) {
       return function(scope,el) {
-
+        
+      }
+    }
+  })
+  add("te-include",{
+    stopCompilation: true,
+    priority: 1000,
+    compile: function(el,transcludeFn) {
+      return function(scope,el,attrs) {
+        // FIXME
+        el.classList.add("te-include-loading")
+        getTemplate(scope.$eval(attrs.teInclude),function(template) {
+          var templated = Cute.compile(template,components)(scope)
+          el.parentElement.replaceChild(templated[0],el)
+        })
       }
     }
   })
@@ -7230,13 +7247,19 @@ Cute.registerComponents = function(components,controllers) {
         })
 
         var parent 
+        var existing = []
         function placeholderHandler(xs) {
           // TODO
           parent = parent || containerEl.parentElement
-          parent.innerHTML = ''
+          existing.forEach(function(el) {
+            parent.removeChild(el)
+          })
+          existing = []
           // TODO insert before repeatedly, or sth
           ;(xs || []).forEach(function(x,index) {
-            parent.appendChild(add(x,index))
+            var el = add(x,index)
+            parent.appendChild(el)
+            existing.push(el)
           })
         }
 

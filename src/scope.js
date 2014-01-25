@@ -49,7 +49,9 @@ Scope.prototype = {
   _digestOne: function(setup) {
     var val = this.$eval(setup.$watch)
     if(val === setup.previous || this._equal(val,setup.previous)) return
-    setup.handler(val,setup.previous === UNCHANGED ? undefined : setup.previous)
+    var previous = setup.previous
+    setup.previous = val
+    setup.handler(val,previous === UNCHANGED ? undefined : previous)
     // shallow clone
     setup.previous = this._clone(val)
     return true
@@ -116,10 +118,10 @@ Scope.prototype = {
 }
 
 function addImplicitReturn(expression) {
-  if(/^\s*[_$a-zA-Z]\w*(?:\.[$_\w]\w*(?:\([^\)]*\))?)*\s*$/.test(expression)) {
-    return 'return ' + expression
+  if(/\breturn\b/.test(expression)) {
+    return expression
   }
-  return expression
+  return 'return (' + expression + ')'
 }
 
 Cute.Scope = Scope

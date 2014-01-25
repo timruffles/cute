@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<head>
+  <meta charset='utf-8'>
+  <style>
+    .tree {
+      border: 1px solid #333;
+      padding: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div>
+    <h3>Tree</h3>
+    <div te-include='"tree"'></div>
+  </div>
+
+  <script type='text/te' id=tree>
+    <div class=tree>
+      <div te-bind='s.item.value'></div>
+      <button te-click='s.item.children.push(s.makeItem())'>Add child</button>
+      <div te-repeat='s.item.children'>
+        <div te-include='"tree"'></div>
+      </div>
+    </div>
+  </script>
+
+  <script src=../../dist.js></script>
+  <script>
+    var components = []
+    var controllers = {}
+    Cute.registerComponents(components,controllers,function(id,cb) {
+      var tpl = document.getElementById(id)
+      cb(tpl.innerHTML)
+    })
+
+    var rootAttach = Cute.compile(document.body,components)
+    var rootScope = new Cute.Scope
+    rootScope.item = {
+      value: "one",
+      children: [
+        {
+          value: "two",
+          children: [
+            {
+              value: "three",
+              children: [
+              ]
+            }
+          ]
+        }
+      ]
+    }
+    var id = 4
+    rootScope.makeItem = function() {
+      return {value: id++,children:[]}
+    }
+    rootAttach(rootScope)
+    rootScope.$apply()
+  </script>
+
+</body>
