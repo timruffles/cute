@@ -6,7 +6,10 @@ sum() {
 
 mine=$(cloc src | sum)
 
-printf "cute.js is $mine lines of code\n\n"
+min=$(cat src/*.js src/**/*.js | uglifyjs | wc -c)
+gz=$(cat src/*.js src/**/*.js | uglifyjs | gzip | wc -c)
+
+printf "cute.js is $mine lines of code, $min bytes minfied, $gz bytes min + gzipped\n\n"
 
 for lib in "$@"; do
   target=$(cloc $lib --sum-one | sum)
