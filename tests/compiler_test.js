@@ -104,7 +104,9 @@ describe("compiler",function() {
     it("creates an isolated scope if passed an object",function() {
       var hasScope = {
         selector: "FOO",
-        scope: {override: true}
+        scope: {
+          override: true
+        }
       }
       var el = toDom('<div FOO></div>')
       var linkFn = Cute.compile(el,[hasScope])
@@ -112,6 +114,75 @@ describe("compiler",function() {
       linkFn(scope)
       assert.notEqual(scope.override,el.scope.override)
     })
+    it("evaluator properties allow access to an expression evaluated in parent scope",function() {
+      var hasScope = {
+        selector: "FOO",
+        scope: {
+          someProp: "on child",
+          localFoo: {
+            from: "foo",
+            type: "evaluator"
+          }
+        }
+      }
+      var el = toDom('<div foo="\'something \' + s.someProp + \' ok\'"></div>')
+      var linkFn = Cute.compile(el,[hasScope])
+      var scope = new Cute.Scope({
+        someProp: "from parent"
+      })
+      linkFn(scope)
+      assert.equal("something from parent ok",el.scope.localFoo())
+      scope.someProp = "changed from parent"
+      scope.$digest()
+      assert.equal("something changed from parent ok",el.scope.localFoo())
+    })
+    it("binding isolate allows two way binding between parent and child scopes",function() {
+      var hasScope = {
+        selector: "FOO",
+        scope: {
+          localFoo: {
+            from: "parentFoo",
+            type: "binding"
+          }
+        }
+      }
+      var el = toDom('<div FOO></div>')
+      var linkFn = Cute.compile(el,[hasScope])
+      var scope = new Cute.Scope({
+        parentFoo: "parent original",
+      })
+      linkFn(scope)
+      scope.parentFoo = "parent changed"
+      scope.$digest()
+      assert.equal(el.scope.localFoo,"parent changed")
+      el.scope.localFoo = "child changed"
+      scope.$digest()
+      assert.equal(scope.parentFoo,"child changed")
+    })
+    it("attribute isolate allows a property to reflect evaluated value of attribute",function() {
+      var hasScope = {
+        selector: "FOO",
+        scope: {
+          prop: "not ok",
+          localFoo: {
+            from: "foo",
+            type: "attribute"
+          }
+        }
+      }
+      var el = toDom('<div FOO=\'"something from parent " + s.prop\'></div>')
+      var linkFn = Cute.compile(el,[hasScope])
+      var scope = new Cute.Scope({
+        prop: "ok",
+      })
+      linkFn(scope)
+      scope.$digest()
+      assert.equal(el.scope.localFoo,"something from parent ok")
+      scope.prop = "still ok"
+      scope.$digest()
+      assert.equal(el.scope.localFoo,"something from parent still ok")
+    })
+
   })
 
   describe("internal",function() {

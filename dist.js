@@ -6876,7 +6876,7 @@ function compileNode(node,attrs,componentsForNode,components,transcludeFn) {
 
   function nodeLinkFn(scope,node,attrs) {
     if(newScope) {
-      scope = _.isObject(newScope) ? new Cute.Scope(newScope) : scope.$child()
+      scope = _.isObject(newScope) ? isolateScope(newScope,scope) : scope.$child()
     }
     node.scope = scope
     links.forEach(function(linkFn) {
@@ -6887,6 +6887,47 @@ function compileNode(node,attrs,componentsForNode,components,transcludeFn) {
       childLinkFn(scope)
     }
   } 
+}
+/*
+ * local: { from: teScope, type: attribute },
+ * prop: { from: someProp, type: binding },
+ * someAccesor: { from: someAttr, type: evaluator },
+ * */
+function isolateScope(attrs,parent,elAttrs) {
+  var child = parent.$new()
+  _.each(attrs,function(setup,k) {
+    if(!_.isObject(setup) || !(setup.from && setup.type)) {
+      child[k] = setup
+      return
+    }
+    var create = ISOLATE_TYPES[k]
+    if(!create) throw new Error("Unknown strategy for isolate scope property: " + k)
+    create(k,setup.from,child,parent)
+  })
+  return child
+}
+var ISOLATE_TYPES = {
+  attribute: attributeIsolate,
+  binding: bindingIsolate,
+  evaluator: evaluatorIsolate
+}
+function attributeIsolate(localKey,attr,child,parent) {
+  child.$watchOther(parent,attr,function(now) {
+    child[attr] = now
+  })
+}
+function bindingIsolate(localKey,parentKey,child,parent) {
+  child.$watch(key,function(now) {
+    parent[parentKey] = now
+  })
+  child.$watchOther(parent,attr,function(now) {
+    child[childKey] = now
+  })
+}
+function evaluatorIsolate(localKey,expression,child,parent) {
+  child[localKey] = function() {
+    return parent.$eval(expression)
+  }
 }
 function noop() {}
 function applyComponent(node,attrs,component,componentsForNode,components,transcludeFn) {
@@ -6932,12 +6973,11 @@ function findComponents(node,components) {
   if(hasStop.length > 0) {
     if(hasStop.length > 1) throw new Error("duplicate stopCompilation present," + formatComponentsForError(hasStop))
     stopPriority = hasStop[0].priority
-  }
-  
-  if(stopPriority > -Number.MAX_VALUE) {
-    present = present.filter(function(component) {
-      return component.priority >= stopPriority
-    })
+    if(stopPriority > -Number.MAX_VALUE) {
+      present = present.filter(function(component) {
+        return component.priority >= stopPriority
+      })
+    }
   }
 
   var hasScope = present.filter(_.partial(has,"scope"))
@@ -6996,7 +7036,8 @@ function hyphenToCamel(str) {
 Cute.compile = compile
 Cute._dbg.compiler = {
   findComponents: findComponents,
-  readAttributes: readAttributes
+  readAttributes: readAttributes,
+  isolateScope: isolateScope
 }
 
 })()
@@ -7031,6 +7072,7 @@ function Scope(attrs) {
   this._watchers = []
   this._children = []
   this._queue = []
+  this._cleanup = []
   this._tree = {root: this}
   if(attrs) _.extend(this,attrs)
 }
@@ -7060,6 +7102,8 @@ Scope.prototype = {
     this._children = []
     this.parent._removeChild(this)
     this._watchers = []
+    this._cleanup.forEach(function(c) { return c() })
+    this._cleanup = []
   },
   _removeChild: function(child) {
     this._children.splice(this._children.indexOf(child),1)
@@ -7067,6 +7111,12 @@ Scope.prototype = {
   $watch: function(watch,handler) {
     var setup = {$watch:watch,handler:handler,previous:UNCHANGED};
     this._watchers.push(setup)
+    return function() {
+      this._watchers.splice(this._watchers.indexOf(setup),1)
+    }.bind(this)
+  },
+  $watchOther: function(otherScope,watch,handler) {
+    this._cleanup.push(this.otherScope,watch,handler)
   },
   $digest: function() {
     var changed = false

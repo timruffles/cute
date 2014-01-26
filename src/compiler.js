@@ -79,7 +79,7 @@ function compileNode(node,attrs,componentsForNode,components,transcludeFn) {
 
   function nodeLinkFn(scope,node,attrs) {
     if(newScope) {
-      scope = _.isObject(newScope) ? new Cute.Scope(newScope) : scope.$child()
+      scope = _.isObject(newScope) ? isolateScope(newScope,scope,attrs) : scope.$child()
     }
     node.scope = scope
     links.forEach(function(linkFn) {
@@ -90,6 +90,47 @@ function compileNode(node,attrs,componentsForNode,components,transcludeFn) {
       childLinkFn(scope)
     }
   } 
+}
+/*
+ * local: { from: teScope, type: attribute },
+ * prop: { from: someProp, type: binding },
+ * someAccesor: { from: someAttr, type: evaluator },
+ * */
+function isolateScope(attrs,parent,elAttrs) {
+  var child = parent.$child()
+  _.each(attrs,function(setup,k) {
+    if(!_.isObject(setup) || !(setup.from && setup.type)) {
+      child[k] = setup
+      return
+    }
+    var create = ISOLATE_TYPES[setup.type]
+    if(!create) throw new Error("Unknown strategy for isolate scope property: " + k)
+    create(k,setup.from,child,parent,elAttrs)
+  })
+  return child
+}
+var ISOLATE_TYPES = {
+  attribute: attributeIsolate,
+  binding: bindingIsolate,
+  evaluator: evaluatorIsolate
+}
+function attributeIsolate(localKey,attrKey,child,parent,attrs) {
+  child.$watchOther(parent,attrs[attrKey],function(now) {
+    child[localKey] = now
+  })
+}
+function bindingIsolate(localKey,parentKey,child,parent) {
+  child.$watch("s." + localKey,function(now) {
+    parent[parentKey] = now
+  })
+  child.$watchOther(parent,"s." + parentKey,function(now) {
+    child[localKey] = now
+  })
+}
+function evaluatorIsolate(localKey,attrKey,child,parent,attrs) {
+  child[localKey] = function() {
+    return parent.$eval(attrs[attrKey])
+  }
 }
 function noop() {}
 function applyComponent(node,attrs,component,componentsForNode,components,transcludeFn) {
@@ -135,12 +176,11 @@ function findComponents(node,components) {
   if(hasStop.length > 0) {
     if(hasStop.length > 1) throw new Error("duplicate stopCompilation present," + formatComponentsForError(hasStop))
     stopPriority = hasStop[0].priority
-  }
-  
-  if(stopPriority > -Number.MAX_VALUE) {
-    present = present.filter(function(component) {
-      return component.priority >= stopPriority
-    })
+    if(stopPriority > -Number.MAX_VALUE) {
+      present = present.filter(function(component) {
+        return component.priority >= stopPriority
+      })
+    }
   }
 
   var hasScope = present.filter(_.partial(has,"scope"))

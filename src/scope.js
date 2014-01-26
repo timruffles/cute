@@ -4,6 +4,7 @@ function Scope(attrs) {
   this._watchers = []
   this._children = []
   this._queue = []
+  this._cleanup = []
   this._tree = {root: this}
   if(attrs) _.extend(this,attrs)
 }
@@ -33,6 +34,8 @@ Scope.prototype = {
     this._children = []
     this.parent._removeChild(this)
     this._watchers = []
+    this._cleanup.forEach(function(c) { return c() })
+    this._cleanup = []
   },
   _removeChild: function(child) {
     this._children.splice(this._children.indexOf(child),1)
@@ -40,6 +43,12 @@ Scope.prototype = {
   $watch: function(watch,handler) {
     var setup = {$watch:watch,handler:handler,previous:UNCHANGED};
     this._watchers.push(setup)
+    return function() {
+      this._watchers.splice(this._watchers.indexOf(setup),1)
+    }.bind(this)
+  },
+  $watchOther: function(otherScope,watch,handler) {
+    this._cleanup.push(otherScope.$watch(watch,handler))
   },
   $digest: function() {
     var changed = false
