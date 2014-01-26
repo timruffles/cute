@@ -9,6 +9,7 @@
     <ul>
       <li te-repeat='s.items'>
         <span te-bind='s.item.name'></span>
+        <button te-click='s.removeItem(s.item)'>X</button>
       </li>
     </ul>
   </div>
@@ -25,6 +26,9 @@
         ]
         scope.addItem = function() {
           scope.items.push({name: "new"})
+        }
+        scope.removeItem = function(item) {
+          scope.items.splice(scope.items.indexOf(item))
         }
       }
     })

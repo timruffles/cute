@@ -81,30 +81,69 @@ Cute.registerComponents = function(components,controllers,getTemplate) {
     priority: 1000,
     transclude: "element",
     compile: function(containerEl,attrs,transcludeFn) {
+
+      var id = 1
+
       return function(scope,el) {
         var expr = attrs.teRepeat
-        var hasher = attrs.hashBy ? scope.$eval(attrs.hashBy) : mutatingHashFn
-        var elements = {}
+        var keyer = attrs.keyBy ? scope.$eval(attrs.keyBy) : mutatingKeyFn
+        var byKey = {}
+        var byIndex = []
 
         scope.$watch(expr,function(now,was) {
-          return placeholderHandler(now)
+          var remove = _.clone(byKey)
+          var newByIndex = []
+          var newByKey = {}
+          var retainedByIndex = _.transform(byIndex,function(ret,el,index) {
+            var key = keyer(el.scope.item)
+            if(byKey[key]) ret[index] = el
+          },{})
+          now.map(function(item,index) {
+            var key = keyer(item)
+            var existing = byKey[key]
+            var el
+            if(existing) {
+              existing.scope.item = item
+              existing.scope.$index = index
+              el = existing
+              delete remove[key]
+            } else {
+              el = add(item,index)
+            }
+            newByKey[key] = el
+            insert(el,index)
+          })
+          _.each(remove,function(el) {
+            el.scope.$destroy()
+            el.parentElement.removeChild(el)
+          })
+
+          byKey = newByKey
+          byIndex = newByIndex
+
+          function insert(el,index) {
+            var existing = retainedByIndex[index] || retainedByIndex[index - 1]
+            console.log(el,index)
+            if(existing === el) return
+            if(existing) {
+              insertAfter(el,existing)
+              newByIndex[index] = existing
+            } else {
+              append(el)
+              newByIndex[newByIndex.length] = el
+            }
+          }
         })
 
-        var parent 
-        var existing = []
-        function placeholderHandler(xs) {
-          // TODO
-          parent = parent || containerEl.parentElement
-          existing.forEach(function(el) {
-            parent.removeChild(el)
-          })
-          existing = []
-          // TODO insert before repeatedly, or sth
-          ;(xs || []).forEach(function(x,index) {
-            var el = add(x,index)
-            parent.appendChild(el)
-            existing.push(el)
-          })
+        function append(el) {
+          insertAfter(el,containerEl)
+        }
+
+        function insertAfter(el,target) {
+          if(target.nextElementSibling) {
+            return target.parentElement.insertBefore(el,target.nextElementSibling)
+          }
+          return target.parentElement.appendChild(el)
         }
 
         function add(item,index) {
@@ -117,6 +156,11 @@ Cute.registerComponents = function(components,controllers,getTemplate) {
           })
           return newEl
         }
+      }
+
+      function mutatingKeyFn(x) {
+        if(x.$id) return x.$id
+        return x.$id = id++
       }
     }
   })
@@ -162,12 +206,6 @@ var difference = function(a,b,hasher) {
 }
 
 
-var id = 0;
-function mutatingHashFn(v) {
-  if(!v) return false
-  if(v.$$id) return v.$$id
-  v.$$id = "hash-" + id++
-}
 function takeKey(v,k) { return k }
 
 function HashFnMap(fn) {
