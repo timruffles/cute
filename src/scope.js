@@ -14,6 +14,11 @@ Scope.find = function(el) {
     if(el.scope) return el.scope
   } while(el = el.parentNode)
 }
+Scope.cleanDomStructure = function(node) {
+  node.scope.$destroy()
+  node.scope = null
+  _.each(node.children,Scope.cleanDomStructure)
+}
 Scope.prototype = {
   $child: function(attrs) {
     var child = Object.create(this)
@@ -24,6 +29,13 @@ Scope.prototype = {
     return child
   },
   $destroy: function() {
+    this._children.forEach(function(c) { return c.$destroy() })
+    this._children = []
+    this.parent._removeChild(this)
+    this._watchers = []
+  },
+  _removeChild: function(child) {
+    this._children.splice(this._children.indexOf(child),1)
   },
   $watch: function(watch,handler) {
     var setup = {$watch:watch,handler:handler,previous:UNCHANGED};
