@@ -7252,20 +7252,19 @@ Cute.registerComponents = function(components,controllers,getTemplate) {
 
       var id = 1
 
-      return function(scope,el) {
+      return link
+      
+      function link(scope,el) {
         var expr = attrs.teRepeat
         var keyer = attrs.keyBy ? scope.$eval(attrs.keyBy) : mutatingKeyFn
+        
         var byKey = {}
-        var byIndex = []
-
+        var tailEl
+        
         scope.$watch(expr,function(now,was) {
           var remove = _.clone(byKey)
-          var newByIndex = []
           var newByKey = {}
-          var retainedByIndex = _.transform(byIndex,function(ret,el,index) {
-            var key = keyer(el.scope.item)
-            if(byKey[key]) ret[index] = el
-          },{})
+          tailEl = containerEl
           now.map(function(item,index) {
             var key = keyer(item)
             var existing = byKey[key]
@@ -7279,32 +7278,18 @@ Cute.registerComponents = function(components,controllers,getTemplate) {
               el = add(item,index)
             }
             newByKey[key] = el
-            insert(el,index)
+            prepend(el)
           })
           _.each(remove,function(el) {
             el.scope.$destroy()
             el.parentElement.removeChild(el)
           })
-
           byKey = newByKey
-          byIndex = newByIndex
-
-          function insert(el,index) {
-            var existing = retainedByIndex[index] || retainedByIndex[index - 1]
-            console.log(el,index)
-            if(existing === el) return
-            if(existing) {
-              insertAfter(el,existing)
-              newByIndex[index] = existing
-            } else {
-              append(el)
-              newByIndex[newByIndex.length] = el
-            }
-          }
         })
-
-        function append(el) {
-          insertAfter(el,containerEl)
+        
+        function prepend(el) {
+          insertAfter(el,tailEl)
+          tailEl = el
         }
 
         function insertAfter(el,target) {

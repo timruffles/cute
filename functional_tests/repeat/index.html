@@ -24,11 +24,12 @@
           { name: "squidly" },
           { name: "starfish" },
         ]
+        var itemId = 10
         scope.addItem = function() {
-          scope.items.push({name: "new"})
+          scope.items.push({name: "new" + ++itemId})
         }
         scope.removeItem = function(item) {
-          scope.items.splice(scope.items.indexOf(item))
+          scope.items.splice(scope.items.indexOf(item),1)
         }
       }
     })
