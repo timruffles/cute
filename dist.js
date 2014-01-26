@@ -7244,6 +7244,15 @@ Cute.registerComponents = function(components,controllers,getTemplate) {
       }
     }
   })
+  add("te-style",{
+    link: function(scope,el,attrs) {
+      scope.$watch(attrs.teStyle,function(now) {
+        _.each(now,function(val,key) {
+          el.style[key] = val
+        })
+      })
+    }
+  })
   add("te-repeat",{
     stopCompilation: true,
     priority: 1000,
@@ -7271,7 +7280,7 @@ Cute.registerComponents = function(components,controllers,getTemplate) {
             var el
             if(existing) {
               existing.scope.item = item
-              existing.scope.$index = index
+              existing.scope.index = index
               el = existing
               delete remove[key]
             } else {

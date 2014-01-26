@@ -1,13 +1,23 @@
 <!DOCTYPE html>
 <head>
   <meta charset='utf-8'>
+  <style>
+    ul {
+      position: relative;
+    }
+    li {
+      position: absolute;
+      transition: all 0.5s;
+    }
+  </style>
 </head>
 <body>
   <div te-controller=demo>
     <h3>Simple repeat</h3>
     <button te-click='s.addItem()'>Add</button>
+    <button te-click='s.randomise()'>Randomise</button>
     <ul>
-      <li te-repeat='s.items'>
+      <li te-repeat='s.items' te-style='{top:s.item.order * 2 + "em"}'>
         <span te-bind='s.item.name'></span>
         <button te-click='s.removeItem(s.item)'>X</button>
       </li>
@@ -27,10 +37,21 @@
         var itemId = 10
         scope.addItem = function() {
           scope.items.push({name: "new" + ++itemId})
+          scope.randomise()
         }
         scope.removeItem = function(item) {
           scope.items.splice(scope.items.indexOf(item),1)
+          scope.randomise()
         }
+        scope.randomise = function() {
+          var randomised = scope.items.slice().sort(function() {
+            return 0.5 - Math.random()
+          })
+          randomised.forEach(function(item,index) {
+            scope.items[scope.items.indexOf(item)].order = index
+          })
+        }
+        scope.randomise()
       }
     })
     var rootAttach = Cute.compile(document.body,components)
