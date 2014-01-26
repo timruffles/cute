@@ -6788,7 +6788,22 @@
 function Cute() {
 }
 
-Cute.identityFunction = function() {}
+Cute.isObject = function(x) {
+  return x && (typeof x === "function" || typeof x === "object")
+}
+
+Cute.slice = slice
+
+function slice(xs,n,m) {
+  return [].slice.call(xs,n,m)
+}
+
+Cute.partial = function(fn) {
+  var args = slice(arguments,1)
+  return function() {
+    return fn.apply(null,args.concat(slice(arguments)))
+  }
+}
 
 Cute._dbg = {}
 
@@ -6802,8 +6817,8 @@ function compile(nodes,components,maxPriorty,transcludeFn) {
   if(typeof nodes === "string") nodes = Cute.htmlToDom(nodes)
   if(nodes instanceof Element) nodes = [nodes]
 
-  components = _.sortBy(components,function(c) {
-    return -c.priority
+  components = components.sort(function(a,b) {
+    return b.priority - a.priority
   })
   var componentsToApply = components.slice()
 
@@ -6813,7 +6828,7 @@ function compile(nodes,components,maxPriorty,transcludeFn) {
     })
   }
 
-  var nodeSetups = _.map(nodes,function(node) {
+  var nodeSetups = [].map.call(nodes,function(node) {
     var attrs = readAttributes(node)
     return compileNode(node,attrs,componentsToApply,components,transcludeFn)
   })
@@ -6831,10 +6846,6 @@ function compile(nodes,components,maxPriorty,transcludeFn) {
 
     return nodesToLink
   } 
-}
-
-function tap(x) {
-  console.log(x); return x
 }
 
 /* metadoc:
@@ -6876,7 +6887,7 @@ function compileNode(node,attrs,componentsForNode,components,transcludeFn) {
 
   function nodeLinkFn(scope,node,attrs) {
     if(newScope) {
-      scope = _.isObject(newScope) ? isolateScope(newScope,scope,attrs) : scope.$child()
+      scope = Cute.isObject(newScope) ? isolateScope(newScope,scope,attrs) : scope.$child()
     }
     node.scope = scope
     links.forEach(function(linkFn) {
@@ -6969,7 +6980,7 @@ function findComponents(node,components) {
   })
 
   var stopPriority = -Number.MAX_VALUE
-  var hasStop = present.filter(_.partial(has,"stopCompilation"))
+  var hasStop = present.filter(Cute.partial(has,"stopCompilation"))
   if(hasStop.length > 0) {
     if(hasStop.length > 1) throw new Error("duplicate stopCompilation present," + formatComponentsForError(hasStop))
     stopPriority = hasStop[0].priority
@@ -6980,7 +6991,7 @@ function findComponents(node,components) {
     }
   }
 
-  var hasScope = present.filter(_.partial(has,"scope"))
+  var hasScope = present.filter(Cute.partial(has,"scope"))
   if(hasScope.length > 0) {
     if(hasScope.length > 1) throw new Error("duplicate scope present," + formatComponentsForError(hasScope))
     scope = hasScope[0].scope
@@ -7000,10 +7011,6 @@ function formatComponentsForError(components) {
 }
 function has(k,o) {
   return k in o
-}
-var flatmap = _.compose(_.flatten,_.map)
-var byPriority = function(a,b) {
-  return b.priority - a.priority
 }
 
 function readAttributes(node) {
@@ -7130,7 +7137,7 @@ Scope.prototype = {
      compared by identity, give them - or their prototype - an `.isEqual` function which'll
      be used by `$watch`'s equality algorithm. */
   $watch: function(watch,handler) {
-    var setup = {$watch:this.$compile(watch),handler:handler,previous:UNCHANGED};
+    var setup = {$watch:this.$compile(watch),handler:handler,previous:UNCHANGED}
     this._watchers.push(setup)
 
     return function() {
@@ -7294,10 +7301,19 @@ Cute.registerComponents = function(components,controllers,getTemplate) {
       })
     })
   })
-  add("te-bind",function(scope,el) {
-    var expression = el.getAttribute("te-bind")
-    scope.$watch(expression,function(val) {
+  add("te-bind",function(scope,el,attrs) {
+    scope.$watch(attrs.teBind,function(val) {
       el.innerHTML = val
+    })
+  })
+  add("te-show",function(scope,el,attrs) {
+    scope.$watch(attrs.teShow,function(val) {
+      el.classList["te-hide"].toggle(!val)
+    })
+  })
+  add("te-hide",function(scope,el,attrs) {
+    scope.$watch(attrs.teShow,function(val) {
+      el.classList["te-hide"].toggle(val)
     })
   })
   add("te-submit",function(scope,el) {
@@ -7350,6 +7366,10 @@ Cute.registerComponents = function(components,controllers,getTemplate) {
       })
     }
   })
+  function valueInput() {
+  }
+  function booleanInput() {
+  }
   add("te-model",{
     link: function(scope,el,attrs) {
       var domChange
@@ -7366,7 +7386,6 @@ Cute.registerComponents = function(components,controllers,getTemplate) {
         scope.$apply(function() {
           // requires eval as teModel can be arbitary: s.foo.bar.baz etc
           var set = new Function("value","s","scope","return " + attrs.teModel + " = value")
-          console.log("hi")
           scope.$eval(function(s) {
             domChange = set(el.value,scope,scope)
           })
@@ -7478,7 +7497,7 @@ var difference = function(a,b,hasher) {
   }
 
   function state(xs,cb) {
-    cb = cb || Cute.identityFunction
+    cb = cb || identity
     return xs.reduce(function(vals,x,i) {
       var hash = hasher(x,i)
       vals[hash] = {v: v, i: i}
@@ -7488,18 +7507,6 @@ var difference = function(a,b,hasher) {
   }
 }
 
-
-function takeKey(v,k) { return k }
-
-function HashFnMap(fn) {
-  this._byHash = {}
-  this._hashFn = fn
-}
-HashFnMap.prototype.get = function(k) {
-  this._byHash[k]
-}
-HashFnMap.prototype.add = function(v) {
-  this._byHash[this._hashFn(v)] = v
-}
+function identity() {}
 
 })()

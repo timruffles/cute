@@ -5,8 +5,8 @@ function compile(nodes,components,maxPriorty,transcludeFn) {
   if(typeof nodes === "string") nodes = Cute.htmlToDom(nodes)
   if(nodes instanceof Element) nodes = [nodes]
 
-  components = _.sortBy(components,function(c) {
-    return -c.priority
+  components = components.sort(function(a,b) {
+    return b.priority - a.priority
   })
   var componentsToApply = components.slice()
 
@@ -16,7 +16,7 @@ function compile(nodes,components,maxPriorty,transcludeFn) {
     })
   }
 
-  var nodeSetups = _.map(nodes,function(node) {
+  var nodeSetups = [].map.call(nodes,function(node) {
     var attrs = readAttributes(node)
     return compileNode(node,attrs,componentsToApply,components,transcludeFn)
   })
@@ -34,10 +34,6 @@ function compile(nodes,components,maxPriorty,transcludeFn) {
 
     return nodesToLink
   } 
-}
-
-function tap(x) {
-  console.log(x); return x
 }
 
 /* metadoc:
@@ -79,7 +75,7 @@ function compileNode(node,attrs,componentsForNode,components,transcludeFn) {
 
   function nodeLinkFn(scope,node,attrs) {
     if(newScope) {
-      scope = _.isObject(newScope) ? isolateScope(newScope,scope,attrs) : scope.$child()
+      scope = Cute.isObject(newScope) ? isolateScope(newScope,scope,attrs) : scope.$child()
     }
     node.scope = scope
     links.forEach(function(linkFn) {
@@ -172,7 +168,7 @@ function findComponents(node,components) {
   })
 
   var stopPriority = -Number.MAX_VALUE
-  var hasStop = present.filter(_.partial(has,"stopCompilation"))
+  var hasStop = present.filter(Cute.partial(has,"stopCompilation"))
   if(hasStop.length > 0) {
     if(hasStop.length > 1) throw new Error("duplicate stopCompilation present," + formatComponentsForError(hasStop))
     stopPriority = hasStop[0].priority
@@ -183,7 +179,7 @@ function findComponents(node,components) {
     }
   }
 
-  var hasScope = present.filter(_.partial(has,"scope"))
+  var hasScope = present.filter(Cute.partial(has,"scope"))
   if(hasScope.length > 0) {
     if(hasScope.length > 1) throw new Error("duplicate scope present," + formatComponentsForError(hasScope))
     scope = hasScope[0].scope
@@ -203,10 +199,6 @@ function formatComponentsForError(components) {
 }
 function has(k,o) {
   return k in o
-}
-var flatmap = _.compose(_.flatten,_.map)
-var byPriority = function(a,b) {
-  return b.priority - a.priority
 }
 
 function readAttributes(node) {

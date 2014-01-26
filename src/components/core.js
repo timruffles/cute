@@ -37,10 +37,19 @@ Cute.registerComponents = function(components,controllers,getTemplate) {
       })
     })
   })
-  add("te-bind",function(scope,el) {
-    var expression = el.getAttribute("te-bind")
-    scope.$watch(expression,function(val) {
+  add("te-bind",function(scope,el,attrs) {
+    scope.$watch(attrs.teBind,function(val) {
       el.innerHTML = val
+    })
+  })
+  add("te-show",function(scope,el,attrs) {
+    scope.$watch(attrs.teShow,function(val) {
+      el.classList["te-hide"].toggle(!val)
+    })
+  })
+  add("te-hide",function(scope,el,attrs) {
+    scope.$watch(attrs.teShow,function(val) {
+      el.classList["te-hide"].toggle(val)
     })
   })
   add("te-submit",function(scope,el) {
@@ -93,6 +102,10 @@ Cute.registerComponents = function(components,controllers,getTemplate) {
       })
     }
   })
+  function valueInput() {
+  }
+  function booleanInput() {
+  }
   add("te-model",{
     link: function(scope,el,attrs) {
       var domChange
@@ -220,7 +233,7 @@ var difference = function(a,b,hasher) {
   }
 
   function state(xs,cb) {
-    cb = cb || Cute.identityFunction
+    cb = cb || identity
     return xs.reduce(function(vals,x,i) {
       var hash = hasher(x,i)
       vals[hash] = {v: v, i: i}
@@ -230,18 +243,6 @@ var difference = function(a,b,hasher) {
   }
 }
 
-
-function takeKey(v,k) { return k }
-
-function HashFnMap(fn) {
-  this._byHash = {}
-  this._hashFn = fn
-}
-HashFnMap.prototype.get = function(k) {
-  this._byHash[k]
-}
-HashFnMap.prototype.add = function(v) {
-  this._byHash[this._hashFn(v)] = v
-}
+function identity() {}
 
 })()

@@ -57,7 +57,7 @@ Scope.prototype = {
      compared by identity, give them - or their prototype - an `.isEqual` function which'll
      be used by `$watch`'s equality algorithm. */
   $watch: function(watch,handler) {
-    var setup = {$watch:this.$compile(watch),handler:handler,previous:UNCHANGED};
+    var setup = {$watch:this.$compile(watch),handler:handler,previous:UNCHANGED}
     this._watchers.push(setup)
 
     return function() {
