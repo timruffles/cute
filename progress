@@ -6,6 +6,8 @@ sum() {
 
 mine=$(cloc src | sum)
 
+printf "cute.js is $mine lines of code\n\n"
+
 for lib in "$@"; do
   target=$(cloc $lib --sum-one | sum)
   diff=$(( $target - mine ))
