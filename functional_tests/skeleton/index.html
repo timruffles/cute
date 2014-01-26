@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<head>
+  <meta charset='utf-8'>
+</head>
+<body>
+  <div te-controller='eg'>
+    <h3>Some test</h3>
+  </div>
+
+  <script src=../../dist.js></script>
+  <script>
+    var components = []
+    var controllers = {}
+    Cute.registerComponents(components,controllers)
+
+    controllers.eg = function(scope) {
+    }
+
+    var rootAttach = Cute.compile(document.body,components)
+    var rootScope = new Cute.Scope
+    rootAttach(rootScope)
+    rootScope.$apply()
+  </script>
+
+</body>

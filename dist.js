@@ -6876,7 +6876,7 @@ function compileNode(node,attrs,componentsForNode,components,transcludeFn) {
 
   function nodeLinkFn(scope,node,attrs) {
     if(newScope) {
-      scope = _.isObject(newScope) ? isolateScope(newScope,scope) : scope.$child()
+      scope = _.isObject(newScope) ? isolateScope(newScope,scope,attrs) : scope.$child()
     }
     node.scope = scope
     links.forEach(function(linkFn) {
@@ -6894,15 +6894,15 @@ function compileNode(node,attrs,componentsForNode,components,transcludeFn) {
  * someAccesor: { from: someAttr, type: evaluator },
  * */
 function isolateScope(attrs,parent,elAttrs) {
-  var child = parent.$new()
+  var child = parent.$child()
   _.each(attrs,function(setup,k) {
     if(!_.isObject(setup) || !(setup.from && setup.type)) {
       child[k] = setup
       return
     }
-    var create = ISOLATE_TYPES[k]
+    var create = ISOLATE_TYPES[setup.type]
     if(!create) throw new Error("Unknown strategy for isolate scope property: " + k)
-    create(k,setup.from,child,parent)
+    create(k,setup.from,child,parent,elAttrs)
   })
   return child
 }
@@ -6911,22 +6911,22 @@ var ISOLATE_TYPES = {
   binding: bindingIsolate,
   evaluator: evaluatorIsolate
 }
-function attributeIsolate(localKey,attr,child,parent) {
-  child.$watchOther(parent,attr,function(now) {
-    child[attr] = now
+function attributeIsolate(localKey,attrKey,child,parent,attrs) {
+  child.$watchOther(parent,attrs[attrKey],function(now) {
+    child[localKey] = now
   })
 }
 function bindingIsolate(localKey,parentKey,child,parent) {
-  child.$watch(key,function(now) {
+  child.$watch("s." + localKey,function(now) {
     parent[parentKey] = now
   })
-  child.$watchOther(parent,attr,function(now) {
-    child[childKey] = now
+  child.$watchOther(parent,"s." + parentKey,function(now) {
+    child[localKey] = now
   })
 }
-function evaluatorIsolate(localKey,expression,child,parent) {
+function evaluatorIsolate(localKey,attrKey,child,parent,attrs) {
   child[localKey] = function() {
-    return parent.$eval(expression)
+    return parent.$eval(attrs[attrKey])
   }
 }
 function noop() {}
@@ -7036,8 +7036,7 @@ function hyphenToCamel(str) {
 Cute.compile = compile
 Cute._dbg.compiler = {
   findComponents: findComponents,
-  readAttributes: readAttributes,
-  isolateScope: isolateScope
+  readAttributes: readAttributes
 }
 
 })()
@@ -7053,6 +7052,12 @@ Cute.components = {
     setup.priority = setup.priority || 0
     if(setup.stopCompilation && setup.priority == null) throw new Error("Need priority to stop compilation")
     return setup
+  },
+  scopedListener: function(scope,el,event,handler) {
+    el.addEventListener(event,handler)
+    scope.$dependency(function() {
+      el.removeEventListener(event,handler)
+    })
   }
 }
 
@@ -7068,6 +7073,9 @@ Cute.htmlToDom = function(str) {
 })()
 ;(function() {
 
+/* A `$watch`able object. Place properties you wish to observe
+   on properties of the scope, and `$watch` or `$eval` expressions
+   against it. */
 function Scope(attrs) {
   this._watchers = []
   this._children = []
@@ -7078,17 +7086,20 @@ function Scope(attrs) {
 }
 Scope.MAX_ITERATIONS_EXCEEDED = "Max iterations exceeded"
 var UNCHANGED = function() {}
+/* Find the nearest scope - start on this element, upwards */
 Scope.find = function(el) {
   do {
     if(el.scope) return el.scope
   } while(el = el.parentNode)
 }
+/* `$destroy` all scopes in the passed DOM tree */
 Scope.cleanDomStructure = function(node) {
   node.scope.$destroy()
   node.scope = null
   _.each(node.children,Scope.cleanDomStructure)
 }
 Scope.prototype = {
+  /* Create a child scope that prototypally inherits from this scope */
   $child: function(attrs) {
     var child = Object.create(this)
     Scope.call(child,attrs)
@@ -7097,55 +7108,77 @@ Scope.prototype = {
     this._children.push(child)
     return child
   },
+  /* Stops this and all child scopes from firing watchers - normally prefer `Scope.cleanDomStructure` */
   $destroy: function() {
     this._children.forEach(function(c) { return c.$destroy() })
     this._children = []
+
     this.parent._removeChild(this)
+
     this._watchers = []
+
     this._cleanup.forEach(function(c) { return c() })
     this._cleanup = []
   },
   _removeChild: function(child) {
     this._children.splice(this._children.indexOf(child),1)
   },
+  /* Watch the value of a function or string evaluated against this scope. The supplied
+     handler will be fired during a `$digest` if the value has changed.
+    
+     Collections can only be watched shallowly. If you have objects you don't wish to be
+     compared by identity, give them - or their prototype - an `.isEqual` function which'll
+     be used by `$watch`'s equality algorithm. */
   $watch: function(watch,handler) {
-    var setup = {$watch:watch,handler:handler,previous:UNCHANGED};
+    var setup = {$watch:this.$compile(watch),handler:handler,previous:UNCHANGED};
     this._watchers.push(setup)
+
     return function() {
       this._watchers.splice(this._watchers.indexOf(setup),1)
     }.bind(this)
   },
+  /* Start watching another scope, and ensure the watch will be cleaned up when this scope is `$destroy`'d */
   $watchOther: function(otherScope,watch,handler) {
-    this._cleanup.push(this.otherScope,watch,handler)
+    this.$dependency(otherScope.$watch(watch,handler))
   },
+  /* Registers a cleanup function */
+  $dependency: function(fn) {
+    this._cleanup.push(fn)
+  },
+  /* Fires watchers on this scope and its children, recursively. Will continue
+     to fire until all watchers have settled: their values have stopped changing. */
   $digest: function() {
     var changed = false
     var iterations = 20
+
     do {
       if(!iterations) throw new Error(Scope.MAX_ITERATIONS_EXCEEDED)
       iterations -= 1
+
       var watcherChanged = this._watchers.reduce(function(anyChanged,watcher) {
         var watcherChanged = this._digestOne(watcher)
         return anyChanged || watcherChanged
       }.bind(this),false)
+
       var childrenChanged = this._children.reduce(function(anyChanged,child) {
         var childChanged = child.$digest()
         return anyChanged || childChanged
       },false)
+
       changed = watcherChanged || childrenChanged
     } while(changed)
   },
   _digestOne: function(setup) {
     var val = this.$eval(setup.$watch)
     if(val === setup.previous || this._equal(val,setup.previous)) return
+
     var previous = setup.previous
-    setup.previous = val
+    setup.previous = this._shallowClone(val)
     setup.handler(val,previous === UNCHANGED ? undefined : previous)
-    // shallow clone
-    setup.previous = this._clone(val)
+
     return true
   },
-  _clone: function(x) {
+  _shallowClone: function(x) {
     if(typeof x != "object") return x
     return _.clone(x)
   },
@@ -7200,9 +7233,15 @@ Scope.prototype = {
     this._findRoot().$digest()
     return val
   },
+  /* Returns a function that can be evaluated against a scope - faster than
+     repeatedly evaluating strings */
+  $compile: function(src) {
+    return typeof src === "function" ? src : new Function("scope","s",addImplicitReturn(src))
+  },
+  /* Evaluates a function or expression against the scope. Scope will be
+     available as local variables `scope` or `s` */
   $eval: function(src) {
-    var fn = typeof src === "function" ? src : new Function("scope","s",addImplicitReturn(src))
-    return fn(this,this)
+    return this.$compile(src)(this,this)
   },
 }
 
@@ -7285,7 +7324,6 @@ Cute.registerComponents = function(components,controllers,getTemplate) {
     priority: 1000,
     compile: function(el,transcludeFn) {
       return function(scope,el,attrs) {
-        // FIXME
         el.classList.add("te-include-loading")
         getTemplate(scope.$eval(attrs.teInclude),function(template) {
           var templated = Cute.compile(template,components)(scope)
@@ -7301,6 +7339,39 @@ Cute.registerComponents = function(components,controllers,getTemplate) {
           el.style[key] = val
         })
       })
+    }
+  })
+  add("te-class",{
+    link: function(scope,el,attrs) {
+      scope.$watch(attrs.teClass,function(now) {
+        _.each(now,function(val,key) {
+          el.classList[val ? "add" : "remove"](key)
+        })
+      })
+    }
+  })
+  add("te-model",{
+    link: function(scope,el,attrs) {
+      var domChange
+      Cute.components.scopedListener(scope,el,"change",handler)
+      Cute.components.scopedListener(scope,el,"input",handler)
+
+      scope.$watch(attrs.teModel,function(now,was) {
+        if(now === domChange) return
+        el.value = now
+        domChange = el.value
+      })
+
+      function handler() {
+        scope.$apply(function() {
+          // requires eval as teModel can be arbitary: s.foo.bar.baz etc
+          var set = new Function("value","s","scope","return " + attrs.teModel + " = value")
+          console.log("hi")
+          scope.$eval(function(s) {
+            domChange = set(el.value,scope,scope)
+          })
+        })
+      }
     }
   })
   add("te-repeat",{

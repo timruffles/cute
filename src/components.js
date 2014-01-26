@@ -10,6 +10,12 @@ Cute.components = {
     setup.priority = setup.priority || 0
     if(setup.stopCompilation && setup.priority == null) throw new Error("Need priority to stop compilation")
     return setup
+  },
+  scopedListener: function(scope,el,event,handler) {
+    el.addEventListener(event,handler)
+    scope.$dependency(function() {
+      el.removeEventListener(event,handler)
+    })
   }
 }
 

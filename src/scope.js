@@ -1,5 +1,8 @@
 ;(function() {
 
+/* A `$watch`able object. Place properties you wish to observe
+   on properties of the scope, and `$watch` or `$eval` expressions
+   against it. */
 function Scope(attrs) {
   this._watchers = []
   this._children = []
@@ -10,17 +13,20 @@ function Scope(attrs) {
 }
 Scope.MAX_ITERATIONS_EXCEEDED = "Max iterations exceeded"
 var UNCHANGED = function() {}
+/* Find the nearest scope - start on this element, upwards */
 Scope.find = function(el) {
   do {
     if(el.scope) return el.scope
   } while(el = el.parentNode)
 }
+/* `$destroy` all scopes in the passed DOM tree */
 Scope.cleanDomStructure = function(node) {
   node.scope.$destroy()
   node.scope = null
   _.each(node.children,Scope.cleanDomStructure)
 }
 Scope.prototype = {
+  /* Create a child scope that prototypally inherits from this scope */
   $child: function(attrs) {
     var child = Object.create(this)
     Scope.call(child,attrs)
@@ -29,55 +35,77 @@ Scope.prototype = {
     this._children.push(child)
     return child
   },
+  /* Stops this and all child scopes from firing watchers - normally prefer `Scope.cleanDomStructure` */
   $destroy: function() {
     this._children.forEach(function(c) { return c.$destroy() })
     this._children = []
+
     this.parent._removeChild(this)
+
     this._watchers = []
+
     this._cleanup.forEach(function(c) { return c() })
     this._cleanup = []
   },
   _removeChild: function(child) {
     this._children.splice(this._children.indexOf(child),1)
   },
+  /* Watch the value of a function or string evaluated against this scope. The supplied
+     handler will be fired during a `$digest` if the value has changed.
+    
+     Collections can only be watched shallowly. If you have objects you don't wish to be
+     compared by identity, give them - or their prototype - an `.isEqual` function which'll
+     be used by `$watch`'s equality algorithm. */
   $watch: function(watch,handler) {
-    var setup = {$watch:watch,handler:handler,previous:UNCHANGED};
+    var setup = {$watch:this.$compile(watch),handler:handler,previous:UNCHANGED};
     this._watchers.push(setup)
+
     return function() {
       this._watchers.splice(this._watchers.indexOf(setup),1)
     }.bind(this)
   },
+  /* Start watching another scope, and ensure the watch will be cleaned up when this scope is `$destroy`'d */
   $watchOther: function(otherScope,watch,handler) {
-    this._cleanup.push(otherScope.$watch(watch,handler))
+    this.$dependency(otherScope.$watch(watch,handler))
   },
+  /* Registers a cleanup function */
+  $dependency: function(fn) {
+    this._cleanup.push(fn)
+  },
+  /* Fires watchers on this scope and its children, recursively. Will continue
+     to fire until all watchers have settled: their values have stopped changing. */
   $digest: function() {
     var changed = false
     var iterations = 20
+
     do {
       if(!iterations) throw new Error(Scope.MAX_ITERATIONS_EXCEEDED)
       iterations -= 1
+
       var watcherChanged = this._watchers.reduce(function(anyChanged,watcher) {
         var watcherChanged = this._digestOne(watcher)
         return anyChanged || watcherChanged
       }.bind(this),false)
+
       var childrenChanged = this._children.reduce(function(anyChanged,child) {
         var childChanged = child.$digest()
         return anyChanged || childChanged
       },false)
+
       changed = watcherChanged || childrenChanged
     } while(changed)
   },
   _digestOne: function(setup) {
     var val = this.$eval(setup.$watch)
     if(val === setup.previous || this._equal(val,setup.previous)) return
+
     var previous = setup.previous
-    setup.previous = val
+    setup.previous = this._shallowClone(val)
     setup.handler(val,previous === UNCHANGED ? undefined : previous)
-    // shallow clone
-    setup.previous = this._clone(val)
+
     return true
   },
-  _clone: function(x) {
+  _shallowClone: function(x) {
     if(typeof x != "object") return x
     return _.clone(x)
   },
@@ -132,9 +160,15 @@ Scope.prototype = {
     this._findRoot().$digest()
     return val
   },
+  /* Returns a function that can be evaluated against a scope - faster than
+     repeatedly evaluating strings */
+  $compile: function(src) {
+    return typeof src === "function" ? src : new Function("scope","s",addImplicitReturn(src))
+  },
+  /* Evaluates a function or expression against the scope. Scope will be
+     available as local variables `scope` or `s` */
   $eval: function(src) {
-    var fn = typeof src === "function" ? src : new Function("scope","s",addImplicitReturn(src))
-    return fn(this,this)
+    return this.$compile(src)(this,this)
   },
 }
 

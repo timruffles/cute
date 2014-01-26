@@ -12,25 +12,25 @@ describe("repeat test",function() {
     "</ul>"
   )
   it("has only placeholder node if data empty",function() {
-    var scope = makeScope({
+    var scope = new Cute.Scope({
       rows: []
     })   
-    var el = compileLink(tpl,scope)
+    var el = compileLink(tpl,scope,components)
     scope.$apply()
-    assert.equal(el[0].querySelectorAll("li").length,0)
+    assert.equal(el.querySelectorAll("li").length,0)
   })
   describe("property access",function() {
     var el
     var scope
     before(function(done) {
-      var parent = makeScope({fromParent:"fromParent"})
+      var parent = new Cute.Scope({fromParent:"fromParent"})
       scope = parent.$child()
       scope.rows = [
         {name: "a"},
         {name: "b"},
         {name: "c"},
       ]
-      el = compileLink(tpl,scope)[0]
+      el = compileLink(tpl,scope,components)
       scope.$apply()
       setTimeout(done)
     })
@@ -44,18 +44,4 @@ describe("repeat test",function() {
     })
   })
 
-  function compileLink(tpl,scope) {
-    var link = Cute.compile(tpl,components,null,null)
-    return link(scope)
-  }
-  function makeScope(data) {
-    var scope = new Cute.Scope
-    _.extend(scope,data || {})
-    return scope
-  }
 })
-
-function join() {
-  return [].join.call(arguments,"")
-}
-

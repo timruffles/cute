@@ -67,7 +67,6 @@ Cute.registerComponents = function(components,controllers,getTemplate) {
     priority: 1000,
     compile: function(el,transcludeFn) {
       return function(scope,el,attrs) {
-        // FIXME
         el.classList.add("te-include-loading")
         getTemplate(scope.$eval(attrs.teInclude),function(template) {
           var templated = Cute.compile(template,components)(scope)
@@ -83,6 +82,39 @@ Cute.registerComponents = function(components,controllers,getTemplate) {
           el.style[key] = val
         })
       })
+    }
+  })
+  add("te-class",{
+    link: function(scope,el,attrs) {
+      scope.$watch(attrs.teClass,function(now) {
+        _.each(now,function(val,key) {
+          el.classList[val ? "add" : "remove"](key)
+        })
+      })
+    }
+  })
+  add("te-model",{
+    link: function(scope,el,attrs) {
+      var domChange
+      Cute.components.scopedListener(scope,el,"change",handler)
+      Cute.components.scopedListener(scope,el,"input",handler)
+
+      scope.$watch(attrs.teModel,function(now,was) {
+        if(now === domChange) return
+        el.value = now
+        domChange = el.value
+      })
+
+      function handler() {
+        scope.$apply(function() {
+          // requires eval as teModel can be arbitary: s.foo.bar.baz etc
+          var set = new Function("value","s","scope","return " + attrs.teModel + " = value")
+          console.log("hi")
+          scope.$eval(function(s) {
+            domChange = set(el.value,scope,scope)
+          })
+        })
+      }
     }
   })
   add("te-repeat",{
