@@ -109,7 +109,6 @@ Cute.registerComponents = function(components,controllers,getTemplate) {
         scope.$apply(function() {
           // requires eval as teModel can be arbitary: s.foo.bar.baz etc
           var set = new Function("value","s","scope","return " + attrs.teModel + " = value")
-          console.log("hi")
           scope.$eval(function(s) {
             domChange = set(el.value,scope,scope)
           })
