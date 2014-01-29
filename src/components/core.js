@@ -52,6 +52,18 @@ Cute.registerComponents = function(components,controllers,getTemplate) {
       el.classList["te-hide"].toggle(val)
     })
   })
+  /* Routes:
+     {
+       '/users': {
+           
+       }
+     }
+    
+     */
+  add("te-view",function(scope,el,attrs) {
+    scope.$on("route",function(route) {
+    })
+  })
   add("te-submit",function(scope,el) {
     var expression = el.getAttribute("te-click")
     el.addEventListener("submit",function(event) {
@@ -204,42 +216,6 @@ Cute.registerComponents = function(components,controllers,getTemplate) {
   })
   Cute.animate = function animate(name,node,cb) {
     setTimeout(cb)
-  }
-}
-
-var difference = function(a,b,hasher) {
-  var added = {}
-  var moved = {}
-  var newOrder = []
-
-  var as = state(a,function(hash,v) {
-    newOrder.push({hash:hash,value:v})
-  })
-  var bs = state(b)
-
-  _.each(as,function(s,k) {
-    var inB = bs[k]
-    if(inB) return added[k] = s
-    if(inB.i !== s.i) moved[k] = s
-    delete bs[k]
-  })
-  removed = bs
-
-  return {
-    newOrder: newOrder,
-    added: added,
-    moved: moved,
-    removed: removed
-  }
-
-  function state(xs,cb) {
-    cb = cb || identity
-    return xs.reduce(function(vals,x,i) {
-      var hash = hasher(x,i)
-      vals[hash] = {v: v, i: i}
-      cb(hash,x,i)
-      return vals
-    },{})
   }
 }
 
