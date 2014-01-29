@@ -28,10 +28,8 @@ Scope.cleanDomStructure = function(node) {
 Scope.prototype = {
   /* Create a child scope that prototypally inherits from this scope */
   $child: function(attrs) {
-    var child = Object.create(this)
-    Scope.call(child,attrs)
-    child.parent = this
-    child._tree = this._tree
+    var child = null/* ?? */
+
     this._children.push(child)
     return child
   },
