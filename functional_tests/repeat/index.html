@@ -1,19 +1,30 @@
 <!DOCTYPE html>
 <head>
   <meta charset='utf-8'>
+  <link rel=stylesheet href=../style.css>
   <style>
-    ul {
+    .sorting ul {
       position: relative;
     }
-    li {
+    .sorting li {
       position: absolute;
       transition: all 0.5s;
     }
   </style>
 </head>
 <body>
-  <div te-controller=demo>
+  <div te-controller=simple>
     <h3>Simple repeat</h3>
+    <button te-click='s.addItem()'>Add</button>
+    <ul>
+      <li te-repeat='s.items'>
+        <span te-bind='s.item.name'></span>
+        <button te-click='s.removeItem(s.item)'>X</button>
+      </li>
+    </ul>
+  </div>
+  <div te-controller=sorting class=sorting>
+    <h3>Sorting animation repeat</h3>
     <button te-click='s.addItem()'>Add</button>
     <button te-click='s.randomise()'>Randomise</button>
     <ul>
@@ -28,7 +39,21 @@
   <script>
     var components = []
     Cute.registerComponents(components,{
-      demo: function(scope) {
+      simple: function(scope) {
+        scope.items = [
+          { name: "bob" },
+          { name: "squidly" },
+          { name: "starfish" },
+        ]
+        var itemId = 10
+        scope.addItem = function() {
+          scope.items.push({name: "new" + ++itemId})
+        }
+        scope.removeItem = function(item) {
+          scope.items.splice(scope.items.indexOf(item),1)
+        }
+      },
+      sorting: function(scope) {
         scope.items = [
           { name: "bob" },
           { name: "squidly" },
