@@ -42,7 +42,6 @@ describe("scope",function() {
       assert.calledOnce(spy)
       done()
     })
-
   })
   it("rolls digest down scope tree",function(done) {
     var s1 = new Cute.Scope
@@ -61,6 +60,20 @@ describe("scope",function() {
       done()
     })
   })
+  it("keeps digesting until all watchers have settled",function() {
+    var s1 = new Cute.Scope
+    var s2 = s1.$child()
+    s2.foo = 1
+
+    var times = 5
+    s2.$watch("return s.foo",function(val) {
+      if(--times) s2.foo += 1
+    })
+    s1.$digest()
+
+    assert.equal(0,times)
+  })
+
   it("doesn't require return for simple statements",function() {
     var scope = new Cute.Scope({
       $foo: "ok",
@@ -88,19 +101,6 @@ describe("scope",function() {
     ].forEach(function(str) {
       assert.equal("ok",scope.$eval(str),"expected to add implicit return to '" + str + "'")
     })
-  })
-  it("keeps digesting until all watchers have settled",function() {
-    var s1 = new Cute.Scope
-    var s2 = s1.$child()
-    s2.foo = 1
-
-    var times = 5
-    s2.$watch("return s.foo",function(val) {
-      if(--times) s2.foo += 1
-    })
-    s1.$digest()
-
-    assert.equal(0,times)
   })
   it("throws if maxIterations are exceeded",function() {
     var s1 = new Cute.Scope
