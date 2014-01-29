@@ -1,15 +1,4 @@
 describe("scope",function() {
-  describe("$child scopes",function() {
-    it("prototypally inherits from the parent",function() {
-      var s1 = new Cute.Scope
-      s1.foo = "bar"
-      var s2 = s1.$child()
-      assert.equal(s2.foo,"bar")
-      s2.foo = "zzz"
-      assert.equal(s1.foo,"bar")
-      assert.equal(s2.foo,"zzz")
-    })
-  })
   it("fires watchers on change",function() {
     var s = new Cute.Scope
     var spy = sinon.spy()
@@ -29,6 +18,38 @@ describe("scope",function() {
     assert.equal(s.$eval("return s.foo"),s.foo)
     assert.equal(s.$eval("return s['foo']"),s.foo)
     assert.equal(s.$eval("return scope.foo"),s.foo)
+  })
+  describe("$child scopes",function() {
+    it("prototypally inherits from the parent",function() {
+      var s1 = new Cute.Scope
+      s1.foo = "bar"
+      var s2 = s1.$child()
+      assert.equal(s2.foo,"bar")
+      s2.foo = "zzz"
+      assert.equal(s1.foo,"bar")
+      assert.equal(s2.foo,"zzz")
+    })
+    it("evaluates expressions correctly",function() {
+      var s1 = new Cute.Scope
+      s1.foo = "bar"
+      var s2 = s1.$child()
+      assert.equal(s2.$eval("s.foo"),"bar")
+      s2.foo = "zzz"
+      assert.equal(s2.$eval("s.foo"),"zzz")
+    })
+    it("can reference parent",function() {
+      var s1 = new Cute.Scope
+      var s2 = s1.$child()
+      assert.equal(s2.parent,s1)
+    })
+    it("is doesn't share watchers with parent",function() {
+      var s1 = new Cute.Scope
+      var spy = sinon.spy()
+      s1.$watch("s.something",spy)
+      var s2 = s1.$child()
+      s2.$digest()
+      assert.notCalled(spy)
+    })
   })
   it("uses apply to cause a digest on root of scope tree",function(done) {
     var s1 = new Cute.Scope
