@@ -50,13 +50,16 @@ describe("compiler",function() {
 
     describe("transclude",function() {
 
+      var _transcludeFn
+
       var testComponent = {
         selector: "FOO",
         transclude: true,
         compile: function(el,attrs,transcludeFn) {
+          _transcludeFn = transcludeFn
           return function link() {
             _.range(4).forEach(function() {
-              transcludeFn({},function(els) {
+              transcludeFn(new Cute.Scope,function(els) {
                 $(el).append(els)
               })
             })
@@ -66,13 +69,31 @@ describe("compiler",function() {
 
       var compiledEl
       before(function() {
-        var el = toDom('<div FOO><span class=inside></span></div>')
-        var linkFn = Cute.compile(el,[testComponent])
+        var el = toDom('<div FOO><span class=inside te-bind="s.name"></span></div>')
+        var withTestComponent = baseComponents.slice().concat(testComponent)
+        var linkFn = Cute.compile(el,withTestComponent)
         compiledEl = linkFn({})
       })
 
       it("returns the compiled el set",function() {
         assert.equal(compiledEl.length,1)
+      })
+
+      it("creates a transcludeFn that passes clones to a callback",function() {
+        _transcludeFn(new Cute.Scope,function(els) {
+          var el = els[0]
+          assert.equal(el.tagName,"SPAN")
+          assert(el.hasAttribute("te-bind"))
+        })
+      })
+
+      it("transcluded nodes are applied to a scope",function() {
+        var scope = new Cute.Scope({name: "hello"})
+        _transcludeFn(scope,function(els) {
+          var el = els[0]
+          scope.$digest()
+          assert.equal(el.innerText,"hello")
+        })
       })
 
       it("passes through transclude to compile fn - allowing new versions of transcluded elements to be created",function() {
