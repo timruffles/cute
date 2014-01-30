@@ -62,7 +62,6 @@ Cute.registerComponents = function(components,controllers,getTemplate) {
     })
   })
   add("te-transclude",{
-    stopCompilation: true,
     priority: 1000,
     transclude: "element",
     compile: function(el,transcludeFn) {

@@ -56,8 +56,6 @@ function compile(nodes,components,maxPriorty,transcludeFn) {
  * */
 function compileNode(node,attrs,componentsForNode,components,transcludeFn) {
 
-  var childLinkFn
-
   var componentState = findComponents(node,componentsForNode)
   var matched = componentState.components
   var newScope = componentState.scope
@@ -82,7 +80,7 @@ function compileNode(node,attrs,componentsForNode,components,transcludeFn) {
       linkFn(scope,node,attrs)
     })
     if(!compilationStopped && node.children && node.children.length > 0) {
-      childLinkFn = compile(node.children,components)
+      var childLinkFn = compile(node.children,components)
       childLinkFn(scope)
     }
   } 
@@ -148,6 +146,17 @@ function applyComponent(node,attrs,component,componentsForNode,components,transc
     }
   }
 
+  if(component.template) {
+    var el = compile(component.template,components)
+    if(component.replace) {
+      node.parentElement.replaceChild(el,node)
+      node = el
+    } else {
+      node.innerHTML = ""
+      node.appendChild(el)
+    }
+  }
+
   if(component.compile) {
     // should this be original node, or that via transclude
     // - or is normalising attributes way to go
@@ -161,31 +170,32 @@ function applyComponent(node,attrs,component,componentsForNode,components,transc
 }
 function findComponents(node,components) {
 
-  var scope = false
+  var scope
+  var template
 
   var present = components.filter(function(component) {
     return matchComponent(node,component)
   })
 
-  var stopPriority = -Number.MAX_VALUE
-  var hasStop = present.filter(Cute.partial(has,"stopCompilation"))
-  if(hasStop.length > 0) {
-    if(hasStop.length > 1) throw new Error("duplicate stopCompilation present," + formatComponentsForError(hasStop))
-    stopPriority = hasStop[0].priority
-    if(stopPriority > -Number.MAX_VALUE) {
-      present = present.filter(function(component) {
-        return component.priority >= stopPriority
-      })
-    }
+  var hasStop = fetchAndvalidateUnique(present,"stopCompilation")
+  if(hasStop) {
+    present = present.filter(function(component) {
+      return component.priority >= hasStop.priority
+    })
   }
 
-  var hasScope = present.filter(Cute.partial(has,"scope"))
-  if(hasScope.length > 0) {
-    if(hasScope.length > 1) throw new Error("duplicate scope present," + formatComponentsForError(hasScope))
-    scope = hasScope[0].scope
-  }
+  var hasScope = fetchAndvalidateUnique(present,"scope")
+  if(hasScope) scope = hasScope.scope
+
+  fetchAndvalidateUnique(present,"template")
 
   return {components: present, scope: scope}
+}
+
+function fetchAndvalidateUnique(components,property) {
+  var withProperty = components.filter(Cute.partial(has,property))
+  if(withProperty.length > 1) throw new Error("only one component with '" + property + "' can be present on a node:" + formatComponentsForError(hasScope))
+  if(withProperty.length === 1) return withProperty[0]
 }
 
 
