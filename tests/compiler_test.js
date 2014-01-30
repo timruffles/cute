@@ -53,7 +53,7 @@ describe("compiler",function() {
       var _transcludeFn
 
       var testComponent = {
-        selector: "FOO",
+        selector: "test-transclude",
         transclude: true,
         compile: function(el,attrs,transcludeFn) {
           _transcludeFn = transcludeFn
@@ -69,14 +69,10 @@ describe("compiler",function() {
 
       var compiledEl
       before(function() {
-        var el = toDom('<div FOO><span class=inside te-bind="s.name"></span></div>')
+        var el = toDom('<div test-transclude><span class=inside te-bind="s.name"></span></div>')
         var withTestComponent = baseComponents.slice().concat(testComponent)
         var linkFn = Cute.compile(el,withTestComponent)
-        compiledEl = linkFn({})
-      })
-
-      it("returns the compiled el set",function() {
-        assert.equal(compiledEl.length,1)
+        compiledEl = linkFn(new Cute.Scope)
       })
 
       it("creates a transcludeFn that passes clones to a callback",function() {
@@ -106,6 +102,46 @@ describe("compiler",function() {
           })
         })
       })
+
+      describe("element",function() {
+
+        var _transcludeFn
+        var testComponent = {
+          selector: "transclude-element",
+          transclude: "element",
+          priority: 1000,
+          compile: function(el,attrs,transcludeFn) {
+            _transcludeFn = transcludeFn
+          }
+        }
+
+        var compiledEl
+        before(function() {
+          var el = toDom('<div><div transclude-element te-bind="s.name"></div></div>')
+          var withTestComponent = baseComponents.slice().concat(testComponent)
+          var linkFn = Cute.compile(el,withTestComponent)
+          var scope = new Cute.Scope({name: "incorrect scope"})
+          compiledEl = linkFn(scope)
+        })
+
+        it("clones the original element",function() {
+          _transcludeFn(new Cute.Scope,function(els) {
+            var el = els[0]
+            assert.notEqual(el,compiledEl[0])
+          })
+        })
+
+        it("applies other directives with correct scope",function() {
+          var scope = new Cute.Scope({name: "hi there"})
+          _transcludeFn(scope,function(els) {
+            var el = els[0]
+            scope.$digest()
+            assert.equal(el.innerText,"hi there")
+          })
+        })
+
+      })
+
 
     })
   })
