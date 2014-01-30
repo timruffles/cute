@@ -137,14 +137,15 @@ function applyComponent(node,attrs,component,componentsForNode,components,transc
   if(component.transclude) {
     stopCompilation = true
     var clone = node.cloneNode(true)
+    transcludeFn = function() {}
+
     if(component.transclude === "element") {
-      var placeholder = document.createComment(component.selector)
-      node.parentElement.replaceChild(placeholder,node)
-      transcludeFn = compile([clone],components,component.priority)
-      node = placeholder
+      // transclude element: we'll need to replace the whole node
+      // with a placeholder
+      // and return that for use by other components
+      // - ensure we don't reapply this component
     } else {
-      node.innerHTML = ""
-      transcludeFn = compile(clone.children,components)
+      // transclude - we'll need to compile the children of this node
     }
   }
 
