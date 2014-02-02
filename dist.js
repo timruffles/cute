@@ -6805,6 +6805,16 @@ Cute.partial = function(fn) {
   }
 }
 
+Cute.quickboot = function(opts) {
+  opts = opts || {}
+  Cute.registerComponents(opts.components || [],opts.controllers || {},opts.getTemplate)
+  var rootAttach = Cute.compile(opts.el || document.body,components)
+  var rootScope = new Cute.Scope
+  rootAttach(rootScope)
+  rootScope.$apply()
+  return rootScope
+}
+
 Cute._dbg = {}
 
 window.Cute = Cute
@@ -7311,13 +7321,24 @@ Cute.registerComponents = function(components,controllers,getTemplate) {
       el.classList["te-hide"].toggle(!val)
     })
   })
+  add("te-prop",function(scope,el,attrs) {
+    scope.$watch(attrs.teProp,function(val) {
+      _.each(val,function(v,k) {
+        if(v) {
+          el.setAttribute(k,v)
+        } else {
+          el.removeAttribute(k)
+        }
+      })
+    })
+  })
   add("te-hide",function(scope,el,attrs) {
     scope.$watch(attrs.teShow,function(val) {
       el.classList["te-hide"].toggle(val)
     })
   })
-  add("te-submit",function(scope,el) {
-    var expression = el.getAttribute("te-click")
+  add("te-submit",function(scope,el,attrs) {
+    var expression = attrs.teSubmit
     el.addEventListener("submit",function(event) {
       event.preventDefault()
       scope.$apply(function() {

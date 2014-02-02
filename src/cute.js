@@ -20,6 +20,16 @@ Cute.partial = function(fn) {
   }
 }
 
+Cute.quickboot = function(opts) {
+  opts = opts || {}
+  Cute.registerComponents(opts.components || [],opts.controllers || {},opts.getTemplate)
+  var rootAttach = Cute.compile(opts.el || document.body,components)
+  var rootScope = new Cute.Scope
+  rootAttach(rootScope)
+  rootScope.$apply()
+  return rootScope
+}
+
 Cute._dbg = {}
 
 window.Cute = Cute

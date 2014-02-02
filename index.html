@@ -1,26 +1,115 @@
-<div te-init='s.hello = "hi"; s.counter = 1'>
-  <a href='' te-click='alert(s.hello)'>Click me</a>
-  <button te-click='s.counter += 1'>Add one</button>
-  <span te-bind='return s.counter'></span>
-  <div te-controller=alerty>
-    <button te-click='s.sayHi()'>Use controller function</button>
-    <span te-bind='return s.counter'></span>
-  </div>
-  <div te-controller='items'>
-    <form te-submit='addItem(s.item)'>
-      <input te-bind='s.item.title'>
-      <button>
-        Add item titled
-        <span te-bind='s.item.title'></span>
-      <button>
-    </form>
-    <ul te-repeat='items'>
-      <li>
-        <span te-bind='item.title'>
-      </li>
-    </ul>
-  </div>
-</div>
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  
+    <title>Cute - a smaller Angular</title>
 
-<script src="underscore.js"></script>
-<script src="cute.js"></script>
+    <link rel="stylesheet" href="site/css/home.css" type="text/css" media="screen">
+    
+  </head>
+  <body>
+
+    <header>
+      <nav></nav>
+      <h1>Cute - a small, readable edit of Angular</h1> 
+    </header>
+
+    <div class=wrap>
+      
+      <section>
+        <p>Cute is a small (<1000LOC), readable rewrite of a sub-set of AngularJS.</p>
+        <p>It's designed to help you understand how AngularJS really works, and perhaps be useful on modern mobile devices (it's 3kb gzipped + minified).</p>
+        <p>Do not expect Cute to be very useful yet - it's 0.0.0. Consider it something to read to get a good overview of how AngularJS works. Later, it might get to a stage where it'd be fun to use.</p>
+      </section>
+      
+      <section>
+        <h2>Demo</h2>
+        <div te-controller=counter>
+          <h2>Controllers</h2>
+          <p>
+            <button te-click='s.counter.value += 1'>Add one</button>
+          </p>
+          <h4 te-bind='s.counter.value'></h4>
+          <div te-controller=alerty>
+            <button te-click='s.sayHi()'>Use controller function</button>
+            <p>Counter in child scope <span te-bind='s.counter.value'></span></p>
+          </div>
+          <h2>Repeat</h2>
+          <div te-controller='items'>
+            <form te-submit='s.addItem(s.item)'>
+              <input te-model='s.item.title'>
+              <input type=submit te-attr='{value: s.buttonLabel(s.item)}' te-prop='{disabled: !s.item.title}'>
+            </form>
+            <ul te-repeat='s.items'>
+              <li>
+                <span te-bind='s.item.title'></span>
+                <button te-click='s.removeItem(s.item)'>x</button>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <script code-example type='text/te'>
+          <div te-controller=counter>
+            <h2>Controllers</h2>
+            <p>
+              <button te-click='s.counter.value += 1'>Add one</button>
+            </p>
+            <h4 te-bind='s.counter.value'></h4>
+            <div te-controller=alerty>
+              <button te-click='s.sayHi()'>Use controller function</button>
+              <p>Counter in child scope <span te-bind='s.counter.value'></span></p>
+            </div>
+            <h2>Repeat</h2>
+            <div te-controller='items'>
+              <form te-submit='s.addItem(s.item)'>
+                <input te-model='s.item.title'>
+                <input type=submit te-attr='{value: s.buttonLabel(s.item)}' te-prop='{disabled: !s.item.title}'>
+              </form>
+              <ul te-repeat='s.items'>
+                <li>
+                  <span te-bind='s.item.title'></span>
+                  <button te-click='s.removeItem(s.item)'>x</button>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </script>
+      </section>
+
+      <section>
+        <h2>What's included</h2>
+        <h3>Compiler</h3> 
+        <p>Cute has a compiler that features <a href=#scopes>scopes</a>, <a href=#directives>directives</a>, <a href=#controllers>controllers</a>, <a href=#transclusion>transclusion</a> and <a href=#templates>templates</a>: all the goodness that makes AngularJS so powerful!</p>
+        <h3>Scopes</h3> 
+        <p>Cute's scope system allows you to <code>$watch</code> arbitrary Javascript expressions that can reference the scope as <code>scope</code> or <code>s</code>.
+        <h3>Directives</h3> 
+        <p>All your AngularJS favorites are present in Cute's core directives, with the cute prefix (<code>te-</code>). Take a look at the <a href=#core-directives>directives</a> on offer.</p>
+          <p>All the tools used to write the core directives are available to you for use in writing your own.</p>
+      </section>
+
+      <section>
+        <h2>What's edited out</h2>
+        <h3>Module system</h3> 
+        <p>Dependency injection doesn't require a dependency injection container, especially in dynamic languages. For languages like Java, the static type system makes lots of comming stubbing tasks very tricky in unit tests. Javascript doesn't share these problems.</p>
+        <h3>Routes</h3> 
+        <p>Routing isn't coupled to Angular's core strengths. <code>$router</code> is normally replaced with <a href=TODO>ui-router</a> to bring additional power. Cute will work with a router of your choice - documentation and a production ready version of a <code>te-view</code> component is <a href="http://github.com/timruffles/cute/issues/1">TODO</a>.
+        <h3>HTTP</h3> 
+        <p>There's no need to provide a built-in AJAX library if we don't attempt to solve problems such as template loading. As AngularJS doesn't provide a module-loader, its built-in template loading is unlikely to be used in production anyway: the loading/build system you'll pick will handle it. Cute leaves AJAX up to you!</p>
+      </section>
+
+      <section>
+        <h2 id=api>API documentation</h2>
+        <p>TODO</p>
+      </section>
+
+
+    </div>
+
+    <script src="dist.js"></script>
+    <script src=site/home.js></script>
+  </body>
+
+</html>
+
+

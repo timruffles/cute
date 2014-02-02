@@ -1,0 +1,45 @@
+html {
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  font-family: Open Sans, Helvetica, sans-serif;
+  margin: 0;
+  background: #ddd;
+  font-size: 24px;
+}
+header {
+  text-align: center;  
+  color: #fff;
+  background: #00CBED;
+  padding: 2rem 0;
+}
+header h1 {
+  margin-top: 0;
+  font-weight: 100;
+  font-size: 4rem;
+  color: #fff;
+}
+.wrap {
+  background: #eaeaea;
+  margin: 0 auto;
+  max-width: 960px;
+  padding: 2rem;
+  min-height: 1024px;
+}
+h1, h2, h3, h4 {
+  font-weight: 200;
+  color: #00CBED;
+}
+h2 {
+  font-size: 3rem;
+}
+code {
+  background: rgba(255,255,255,0.95);
+  padding: 2px 4px;
+}
+.code-example {
+  display: block;
+  white-space: pre;
+}
